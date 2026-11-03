@@ -12,6 +12,16 @@ const plus = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return y
 (async () => {
   const base = `http://localhost:${srv.address().port}`, out = process.argv[2] || '/tmp/ln-shots'; fs.mkdirSync(out, { recursive: true });
   const b = await chromium.launch(), errs = [];
+  /* Lendnest is paid: every context starts with a licence on the device, except the paywall check below */
+  const origNew = b.newContext.bind(b);
+  b.newContext = async (o) => { const c = await origNew(o); await c.addInitScript(() => { try { if (!localStorage.getItem('lendnest.licence')) localStorage.setItem('lendnest.licence', JSON.stringify({ key: 'TEST-KEY-0000', checked: Date.now() })); } catch (e) {} }); return c; };
+  { // paywall: no licence, the app shows the unlock form and no entries UI; the server answers 404 here, so activation says it is not set up yet
+    const pc = await origNew({ viewport: { width: 390, height: 844 }, locale: 'en-US' }); const pp = await pc.newPage(); const pe = []; pp.on('pageerror', e => pe.push(e.message));
+    await pp.goto(base + '/app/'); await pp.waitForSelector('#pay-key'); assert.equal(await pp.locator('#fab').count(), 0); assert.ok((await pp.locator('#pay-h').textContent()).includes('Unlock Lendnest'));
+    await pp.fill('#pay-key', 'ABCD-1234-EFGH'); await pp.click('#pay-act'); await pp.waitForFunction(() => document.getElementById('pay-msg').textContent.length > 0);
+    assert.ok((await pp.locator('#pay-msg').textContent()).includes('not set up')); assert.equal(await pp.evaluate(() => localStorage.getItem('lendnest.licence')), null); assert.deepEqual(pe, []);
+    await pc.close();
+  }
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, locale: 'en-US', permissions: ['clipboard-read', 'clipboard-write'], acceptDownloads: true });
   const pg = await ctx.newPage(); pg.on('pageerror', e => errs.push(e.message)); pg.on('console', m => m.type() === 'error' && errs.push(m.text())); pg.on('response', r => r.status() >= 400 && console.log('HTTP', r.status(), r.url()));
   const add = async (o) => {
@@ -91,7 +101,8 @@ const plus = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return y
   // concurrent edit: the stale tab refuses to overwrite and says so
   await t1.click('.card:has-text("One") .head'); await t1.click('dialog button:has-text("Edit")'); await t1.waitForSelector('#f-title');
   await t2.click('#fab'); await t2.fill('#f-title', 'Three'); await t2.fill('#f-person', 'PThree'); await t2.click('#f-save'); await t2.waitForSelector('.card:has-text("Three")'); await t2.waitForTimeout(200);
-  await t1.fill('#f-title', 'One edited'); await t1.click('#f-save'); await t1.waitForSelector('#toast.on'); assert.ok((await t1.locator('#toast').textContent()).includes('Another tab')); assert.equal(await t1.evaluate(() => window.__ln.state.entries.length), 3);
+  await t1.fill('#f-title', 'One edited'); await t1.click('#f-save'); await t1.waitForFunction(() => { const d = document.querySelector('dialog[open]'); return !!d && d.textContent.includes('Another tab'); }); assert.equal(await t1.inputValue('#f-title'), 'One edited', 'the form keeps what was typed'); assert.equal(await t1.evaluate(() => window.__ln.state.entries.length), 3);
+  await t1.click('#f-save'); await t1.waitForSelector('dialog', { state: 'detached' }); assert.equal(await t1.evaluate(() => window.__ln.state.entries.find(x => x.title === 'One edited') ? 1 : 0), 1);
   // cross-tab undo is refused instead of wiping the other tab's write
   await t1.keyboard.press('Escape'); await t1.waitForTimeout(100); if (await t1.locator('#confirm-ok').count()) await t1.click('#confirm-ok'); await t1.waitForSelector('dialog', { state: 'detached' });
   await t1.reload(); await t1.waitForSelector('.card'); await t1.click('.card >> nth=0 >> .pri'); await t1.waitForSelector('#toast.on button');
@@ -133,6 +144,23 @@ const plus = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return y
   await ft.click('[data-tab=ins]'); await ft.waitForSelector('h2.sec'); assert.ok((await ft.locator('main').textContent()).includes('Coming up'));
   // Korean first-run detection
   const ko = await (await b.newContext({ locale: 'ko-KR', viewport: { width: 390, height: 844 } })).newPage(); await ko.goto(base + '/app/'); await ko.waitForSelector('.empty'); assert.ok((await ko.locator('.empty h2').textContent()).includes('빌려준'));
+  // features: tags filter, repayment dates outside the loan are refused, focus returns to the button that opened a dialog
+  const fc = await (await b.newContext({ viewport: { width: 390, height: 844 } })).newPage(); const fcErr = []; fc.on('pageerror', e => fcErr.push(e.message));
+  await fc.goto(base + '/app/'); await fc.waitForSelector('.empty'); await fc.click('.empty button');
+  await fc.fill('#f-title', 'Hammer'); await fc.fill('#f-person', 'Ari'); await fc.fill('#f-tags', 'tools, garden'); await fc.click('#f-save');
+  await fc.click('#fab'); await fc.check('input[name=kind][value=money]', { force: true }); await fc.fill('#f-title', 'Loan'); await fc.fill('#f-person', 'Ari'); await fc.fill('#f-amount', '50'); await fc.fill('#f-date', plus(-10)); await fc.fill('#f-tags', 'cash'); await fc.click('#f-save');
+  await fc.waitForSelector('.card:has-text("Loan")');
+  await fc.click('[data-tab=people]'); await fc.click('[data-tab=out]');
+  await fc.click('.tags button:has-text("#tools"), [role=group] button:has-text("#tools")'); await fc.waitForSelector('.card:has-text("Hammer")'); assert.equal(await fc.locator('.card:has-text("Loan")').count(), 0, 'tag filter hides other entries');
+  await fc.click('[role=group] button:has-text("All")');
+  await fc.click('.card:has-text("Loan") .head'); await fc.click('dialog button:has-text("Record repayment")'); await fc.waitForSelector('#rp-amt');
+  await fc.fill('#rp-amt', '10'); await fc.fill('#rp-date', plus(-30)); await fc.evaluate(() => { document.getElementById('rp-date').removeAttribute('min'); }); await fc.click('dialog button[type=submit]');
+  await fc.waitForFunction(() => document.getElementById('rp-err') && document.getElementById('rp-err').textContent.length > 0);
+  assert.ok(await fc.locator('#rp-amt').count() === 1, 'dialog stays open when the date is out of range');
+  await fc.fill('#rp-date', plus(0)); await fc.click('dialog button[type=submit]'); await fc.waitForSelector('dialog', { state: 'detached' });
+  const focusedId = await fc.evaluate(() => document.activeElement && (document.activeElement.getAttribute('data-id') || document.activeElement.id));
+  assert.ok(focusedId, 'focus is back on a control after the dialog closes');
+  assert.deepEqual(fcErr, [], 'feature page errors: ' + fcErr.join(' | '));
   assert.deepEqual(errs, [], 'console/page errors: ' + errs.join(' | '));
   console.log('e2e ok'); await b.close(); srv.close();
 })().catch(e => { console.error(e); process.exit(1); });

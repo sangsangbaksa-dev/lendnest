@@ -84,12 +84,31 @@
     if (isClosed(e) || !isDate(newDue) || newDue < e.date || (e.due && newDue < e.due)) return false;
     e.extended = e.extended || []; e.extended.push({ date: now || today(), due: newDue }); e.due = newDue; return true;
   }
+  /* tags: up to 5 short labels per entry ("tools", "books"...). Input may be a string ("a, b") or an array. */
+  var TAG_MAX = 5, TAG_LEN = 24;
+  function parseTags(v) {
+    var list = typeof v === 'string' ? v.split(/[,，、;]/) : Array.isArray(v) ? v : [], out = [];
+    list.forEach(function (x) { var t = str(String(x == null ? '' : x), TAG_LEN).replace(/\s+/g, ' '); if (t && out.map(function (y) { return y.toLowerCase(); }).indexOf(t.toLowerCase()) < 0 && out.length < TAG_MAX) out.push(t); });
+    return out;
+  }
+  /* every tag used in the ledger, most used first */
+  function allTags(st) {
+    var n = Object.create(null); st.entries.forEach(function (e) { (e.tags || []).forEach(function (t) { var k = t.toLowerCase(); n[k] = n[k] || { tag: t, count: 0 }; n[k].count++; }); });
+    return Object.keys(n).map(function (k) { return n[k]; }).sort(function (a, b) { return b.count - a.count || (a.tag < b.tag ? -1 : a.tag > b.tag ? 1 : 0); });
+  }
+  function hasTag(e, tag) { return !!tag && (e.tags || []).some(function (t) { return t.toLowerCase() === String(tag).toLowerCase(); }); }
+  /* reminder log: every reminder the user copied or shared is kept (newest last, max 50) */
+  function recordNudge(e, tone, date) {
+    if (['gentle', 'firm', 'final'].indexOf(tone) < 0 || !isDate(date)) return false;
+    e.nudges = (e.nudges || []).concat({ date: date, tone: tone }).slice(-50); return true;
+  }
+  function lastNudge(e) { var n = e.nudges || []; return n.length ? n[n.length - 1] : null; }
   function makeEntry(o) {
     var kind = o.kind === 'money' ? 'money' : 'item';
     var e = { id: o.id || uid(), dir: o.dir === 'in' ? 'in' : 'out', kind: kind, title: str(o.title), personId: o.personId || '',
       amount: kind === 'money' ? (round2(Number(o.amount)) > 0 && Number(o.amount) <= MAX_AMOUNT ? round2(Number(o.amount)) : 0) : 0, currency: str(o.currency, 8).toUpperCase() || 'USD',
       date: isDate(o.date) ? o.date : today(), due: isDate(o.due) ? o.due : '', repayments: [], returnedAt: null, writtenOff: false, extended: [], gone: [], reopened: false, plan: (kind === 'money' && o.plan && Number.isInteger(o.plan.n) && o.plan.n >= 2 && o.plan.n <= 60) ? { n: o.plan.n, every: 30 } : null,
-      note: str(o.note, MAX.note), photo: typeof o.photo === 'string' && /^data:image\/(jpeg|png|webp);base64,/.test(o.photo) && o.photo.length <= MAX_PHOTO ? o.photo : '', created: Number.isFinite(o.created) ? o.created : Date.now() };
+      note: str(o.note, MAX.note), photo: typeof o.photo === 'string' && /^data:image\/(jpeg|png|webp);base64,/.test(o.photo) && o.photo.length <= MAX_PHOTO ? o.photo : '', created: Number.isFinite(o.created) ? o.created : Date.now(), tags: parseTags(o.tags), nudges: [] };
     return e;
   }
   function validEntry(o) {
@@ -178,7 +197,7 @@
   }
   function match(e, p, q) {
     q = q.trim().toLowerCase(); if (!q) return true;
-    return (e.title + ' ' + e.note + ' ' + (p ? p.name : '')).toLowerCase().indexOf(q) >= 0;
+    return (e.title + ' ' + e.note + ' ' + (p ? p.name : '') + ' ' + (e.tags || []).join(' ')).toLowerCase().indexOf(q) >= 0;
   }
 
   /* ---- loan check before lending ---- */
@@ -201,10 +220,10 @@
     return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
   }
   function toCSV(st, now) {
-    var head = ['direction', 'kind', 'title', 'person', 'amount', 'repaid', 'currency', 'date', 'due', 'status', 'returned', 'note'];
+    var head = ['direction', 'kind', 'title', 'person', 'amount', 'repaid', 'currency', 'date', 'due', 'status', 'returned', 'note', 'tags'];
     var rows = st.entries.slice().sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; }).map(function (e) {
       var p = findPerson(st, e.personId);
-      return [e.dir === 'out' ? 'lent' : 'borrowed', e.kind, e.title, p ? p.name : '', e.kind === 'money' ? e.amount : '', e.kind === 'money' ? paid(e) : '', e.kind === 'money' ? e.currency : '', e.date, e.due, status(e, now), e.returnedAt || '', e.note].map(csvCell).join(',');
+      return [e.dir === 'out' ? 'lent' : 'borrowed', e.kind, e.title, p ? p.name : '', e.kind === 'money' ? e.amount : '', e.kind === 'money' ? paid(e) : '', e.kind === 'money' ? e.currency : '', e.date, e.due, status(e, now), e.returnedAt || '', e.note, (e.tags || []).join('; ')].map(csvCell).join(',');
     });
     return '\ufeff' + [head.join(',')].concat(rows).join('\r\n') + '\r\n';
   }
@@ -248,6 +267,7 @@
       e.extended = (Array.isArray(o.extended) ? o.extended : []).filter(function (x) { return x && isDate(x.date) && isDate(x.due); }).map(function (x) { return { date: x.date, due: x.due }; });
       if (Number.isFinite(o.created)) e.created = o.created;
       e.reopened = !!o.reopened; if (e.kind === 'money' && e.plan === null && o.plan) e.plan = makeEntry({ kind: 'money', amount: 1, title: 'x', plan: o.plan }).plan; e.gone = (Array.isArray(o.gone) ? o.gone : []).filter(function (g) { return typeof g === 'string' && ID_RE.test(g); }).slice(-200);
+      e.tags = parseTags(o.tags); e.nudges = (Array.isArray(o.nudges) ? o.nudges : []).filter(function (n) { return n && isDate(n.date) && ['gentle', 'firm', 'final'].indexOf(n.tone) >= 0; }).map(function (n) { return { date: n.date, tone: n.tone }; }).slice(-50);
       if (e.kind === 'money' && !(e.amount > 0)) return; normalize(e);
       st.entries.push(e);
     });
@@ -278,6 +298,7 @@
   }
 
   var api = { applyPlan: applyPlan, installment: installment, upcoming: upcoming, str: str, normalize: normalize, DAY: DAY, ymd: ymd, today: today, isDate: isDate, parse: parse, addDays: addDays, diffDays: diffDays, uid: uid, round2: round2, newState: newState,
+    parseTags: parseTags, allTags: allTags, hasTag: hasTag, recordNudge: recordNudge, lastNudge: lastNudge,
     paid: paid, remaining: remaining, isClosed: isClosed, status: status, daysLate: daysLate, daysLeft: daysLeft, repay: repay, markReturned: markReturned,
     writeOff: writeOff, reopen: reopen, extend: extend, makeEntry: makeEntry, validEntry: validEntry, findPerson: findPerson, personByName: personByName,
     addPerson: addPerson, removePerson: removePerson, personStats: personStats, summary: summary, monthlySeries: monthlySeries, rankPeople: rankPeople,
