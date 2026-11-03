@@ -103,6 +103,7 @@
     var due = h('input', { type: 'date', id: 'f-due', value: base.due !== undefined ? base.due : (existing ? '' : C.addDays(today, st.settings.days)) });
     var note = h('textarea', { id: 'f-note', maxlength: 1000, placeholder: t('notePh') }); note.value = base.note || '';
     var tags = h('input', { type: 'text', id: 'f-tags', maxlength: 140, placeholder: t('tagsPh'), value: (base.tags || []).join(', '), autocomplete: 'off' });
+    var remind = h('input', { type: 'date', id: 'f-remind', value: base.remindOn || '' });
     var err = h('div', { class: 'err', id: 'f-err', role: 'alert' }), hint = h('div', { id: 'f-hint', role: 'status' });
     var moneyBox = h('div', { class: 'two' }, h('div', null, h('label', { for: 'f-amount', text: t('amount') }), amount), h('div', null, h('label', { for: 'f-cur', text: t('currency') }), cur));
     var photoBox = h('div'), file = h('input', { type: 'file', accept: 'image/*', id: 'f-photo', hidden: true });
@@ -141,6 +142,7 @@
     form.appendChild(h('div', { class: 'two' }, h('div', null, h('label', { for: 'f-date', text: t('lentOn') }), date), h('div', null, h('label', { for: 'f-due', text: t('dueOn') }), due)));
     form.appendChild(quick);
     form.appendChild(h('label', { for: 'f-tags', text: t('tags') })); form.appendChild(tags);
+    form.appendChild(h('label', { for: 'f-remind', text: t('remindOn') })); form.appendChild(remind);
     form.appendChild(h('label', { for: 'f-note', text: t('note') })); form.appendChild(note);
     form.appendChild(photoBox); form.appendChild(file); form.appendChild(err);
     form.appendChild(h('div', { class: 'row' }, h('button', { type: 'button', text: t('cancel'), onclick: function () { if (!dirty) { d.close(); return; } confirmBox(t('discard'), t('discardBtn'), true).then(function (ok) { if (ok) d.close(); }); } }), h('button', { type: 'submit', class: 'pri', id: 'f-save', text: t('save') })));
@@ -150,7 +152,7 @@
       ev.preventDefault();
       /* another tab changed the data while this form was open: reload, keep the typed text, and let the user save again */
       if (stale) { stale = false; var fresh = storedState(); if (fresh) { st = fresh; if (existing) { var still = fresh.entries.find(function (x) { return x.id === existing.id; }); if (!still) { d.close(); toast(t('conflict')); return; } existing = still; } } render(); setErr(t('conflict'), null); return; }
-      var o = { dir: dirVal(), kind: kindVal(), title: title.value, amount: amount.value, currency: cur.value.trim() || st.settings.currency, date: date.value, due: due.value, note: note.value, tags: tags.value, photo: photo, plan: kindVal() === 'money' && +planSel.value >= 2 ? { n: +planSel.value } : null };
+      var o = { dir: dirVal(), kind: kindVal(), title: title.value, amount: amount.value, currency: cur.value.trim() || st.settings.currency, date: date.value, due: due.value, note: note.value, tags: tags.value, remindOn: remind.value, photo: photo, plan: kindVal() === 'money' && +planSel.value >= 2 ? { n: +planSel.value } : null };
       var name = person.value.trim(); if (!o.title.trim()) { setErr(t('needTitle'), title); return; }
       if (!name) { setErr(t('needPerson'), person); return; }
       if (o.kind === 'money' && !(Math.round(Number(o.amount) * 100) > 0 && Number(o.amount) <= 1e12)) { setErr(t('needAmount'), amount); return; }
@@ -160,7 +162,7 @@
       var p = C.addPerson(st, name); o.personId = p.id;
       if (existing) {
         var prevPerson = existing.personId;
-        var n = C.makeEntry(o); ['dir', 'kind', 'title', 'personId', 'amount', 'currency', 'date', 'due', 'note', 'tags', 'photo', 'plan'].forEach(function (k) { existing[k] = n[k]; }); C.applyPlan(existing);
+        var n = C.makeEntry(o); ['dir', 'kind', 'title', 'personId', 'amount', 'currency', 'date', 'due', 'note', 'tags', 'remindOn', 'photo', 'plan'].forEach(function (k) { existing[k] = n[k]; }); C.applyPlan(existing);
         C.normalize(existing);
         var old = C.findPerson(st, prevPerson); if (old && old.id !== existing.personId && !old.note && !st.entries.some(function (x) { return x.personId === old.id; })) C.removePerson(st, old.id);
       } else { var ne = C.makeEntry(o); C.applyPlan(ne); st.entries.push(ne); }
@@ -335,6 +337,18 @@
       return h('button', { type: 'button', class: 'sm', 'aria-pressed': String(on), text: '#' + x.tag + ' · ' + x.count, onclick: function () { tagFilter = on ? '' : x.tag; render(); } });
     })));
   }
+  /* reminders that are due today or earlier, with Open and a 3-day snooze */
+  function remindBanner() {
+    var all = C.remindersDue(st), due = all.slice(0, 3);
+    if (!all.length) return null;
+    return h('section', { class: 'banner remind', 'aria-label': t('remindH') }, h('p', { text: t('remindDue', { n: all.length }) }),
+      due.map(function (e) {
+        var p = C.findPerson(st, e.personId) || { name: '' };
+        return h('div', { class: 'row remind-row' }, h('span', { class: 'grow', text: whatOf(e) + ' · ' + p.name }),
+          h('button', { type: 'button', class: 'sm', text: t('remindOpen'), onclick: function () { detail(e); } }),
+          h('button', { type: 'button', class: 'sm', text: t('remindLater'), onclick: function () { C.snoozeReminder(e, 3); save(); render(); } }));
+      }));
+  }
   function viewList(dir) {
     var list = st.entries.filter(function (e) { return e.dir === dir && C.match(e, C.findPerson(st, e.personId), q) && (!tagFilter || C.hasTag(e, tagFilter)); });
     var open = C.sortOpen(list.filter(function (e) { return !C.isClosed(e); })), closed = list.filter(C.isClosed).sort(function (a, b) { return (b.returnedAt || '') < (a.returnedAt || '') ? -1 : (b.returnedAt || '') > (a.returnedAt || '') ? 1 : 0; });
@@ -414,6 +428,14 @@
       h('span', { class: 'grow' }, h('span', { class: 'title', text: whatOf(e) }), h('br'), h('span', { class: 'sub', text: (e.dir === 'out' ? t('toPerson', { name: pp.name }) : t('fromPerson', { name: pp.name })) })), h('span', { class: 'chip ' + C.status(e), text: statusText(e) })))); });
     var lo = C.longestOut(st); if (lo && lo.days >= 1) out.appendChild(h('div', { class: 'banner', text: t('longest', { what: lo.entry.kind === 'money' ? fmtMoney(C.remaining(lo.entry), lo.entry.currency) : lo.entry.title, name: (C.findPerson(st, lo.entry.personId) || {}).name, n: lo.days }) }));
     out.appendChild(h('div', { class: 'card' }, h('h2', { text: t('chart') }), chartSvg(C.monthlySeries(st, 6)), h('div', { class: 'legend' }, h('span', null, h('i', { style: 'background:var(--c1)' }), t('cLent')), h('span', null, h('i', { style: 'background:var(--c2)' }), t('cBack')))));
+    var ts = C.tagSummary(st);
+    if (ts.length) {
+      out.appendChild(h('h2', { class: 'sec', text: t('tagSumH') }));
+      ts.slice(0, 10).forEach(function (r) {
+        var money = moneyMap(r.money);
+        out.appendChild(h('div', { class: 'card', style: 'margin:6px 0' }, h('div', { class: 'head' }, h('span', { class: 'grow title', text: '#' + r.tag }), h('span', { class: 'sub', text: t('tagCounts', { o: r.open, c: r.closed }) })), money ? h('p', { class: 'sub', style: 'margin:6px 0 0', text: t('tagOwed', { a: money }) }) : null));
+      });
+    }
     var rk = C.rankPeople(st).filter(function (x) { return x.s.open > 0; }).slice(0, 5);
     if (rk.length) { out.appendChild(h('h2', { class: 'sec', text: t('ranking') })); rk.forEach(function (x) { out.appendChild(h('div', { class: 'card' }, h('div', { class: 'head' }, h('span', { class: 'grow title', text: x.person.name }), h('span', { class: 'sub', text: t('pOpen', { n: x.s.open }) }), scoreChip(x.s)))); }); }
     return out;
@@ -469,6 +491,7 @@
     view = h('div', { id: 'listwrap' }, buildView());
     root.textContent = '';
     root.appendChild(h('header', { class: 'top' }, h('div', { class: 'wrap' }, h('h1', { class: 'brand' }, logo(), h('span', { text: t('app') })))));
+    var rb = remindBanner(); if (rb) root.appendChild(rb);
     root.appendChild(h('main', { id: 'main', class: 'wrap', tabindex: '-1' }, saveFailed ? h('div', { class: 'banner bad', role: 'alert', text: t('storageErr') }) : null, corrupt ? h('div', { class: 'banner bad', role: 'alert' }, t(copyKept ? 'corrupt' : 'corruptFile') + ' ', h('button', { type: 'button', class: 'link', id: 'dl-corrupt', text: t('downloadRaw'), onclick: function () { var txt = corruptRaw; try { if (!txt) { var k = Object.keys(localStorage).filter(function (x) { return x.indexOf(KEY + '.corrupt') === 0; })[0]; txt = k ? localStorage.getItem(k) : ''; } } catch (e) {} if (!txt) return; download('lendnest-unreadable.txt', txt, 'text/plain'); rawSafe = true; saveFailed = false; render(); } })) : null, search, view));
     if (tab !== 'set') root.appendChild(h('button', { type: 'button', class: 'pri fab', id: 'fab', text: '+ ' + t('add'), onclick: function () { entryForm(null); } }));
     root.appendChild(h('nav', { class: 'tabs', 'aria-label': t('app') }, h('div', { class: 'wrap' }, TABS.map(function (x) {

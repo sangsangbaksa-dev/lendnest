@@ -337,6 +337,14 @@
   };
   Object.keys(EXTRA).forEach(function (l) { Object.assign(L[l], EXTRA[l]); });
   Object.keys(LANDX).forEach(function (l) { Object.assign(LAND[l], LANDX[l]); });
+  var EXTRA2 = {
+    en: { remindOn: 'Remind me on', remindH: 'Reminders', remindDue: '{n} reminders due', remindOpen: 'Open', remindLater: 'Later (3 days)', tagSumH: 'By tag', tagCounts: '{o} open · {c} returned', tagOwed: 'Still outstanding: {a}' },
+    ko: { remindOn: '이 날짜에 알려 주기', remindH: '알림', remindDue: '확인할 알림 {n}건', remindOpen: '열기', remindLater: '3일 뒤로', tagSumH: '태그별', tagCounts: '진행 {o} · 완료 {c}', tagOwed: '아직 남은 금액: {a}' },
+    ja: { remindOn: 'この日に通知', remindH: 'リマインダー', remindDue: '期限のリマインダー {n}件', remindOpen: '開く', remindLater: '3日後に', tagSumH: 'タグ別', tagCounts: '進行中 {o} · 完了 {c}', tagOwed: '未回収の金額: {a}' },
+    zh: { remindOn: '提醒日期', remindH: '提醒', remindDue: '{n} 条提醒待处理', remindOpen: '打开', remindLater: '3 天后', tagSumH: '按标签', tagCounts: '进行中 {o} · 已归还 {c}', tagOwed: '尚未结清：{a}' },
+    es: { remindOn: 'Recordármelo el', remindH: 'Recordatorios', remindDue: '{n} recordatorios pendientes', remindOpen: 'Abrir', remindLater: 'Más tarde (3 días)', tagSumH: 'Por etiqueta', tagCounts: '{o} abiertos · {c} devueltos', tagOwed: 'Aún pendiente: {a}' }
+  };
+  Object.keys(EXTRA2).forEach(function (l) { Object.assign(L[l], EXTRA2[l]); });
   var api = { L: L, LAND: LAND, langs: ['en', 'ko', 'ja', 'zh', 'es'],
     detect: function (nav) { var c = ((nav && (nav.language || (nav.languages || [])[0])) || 'en').toLowerCase().slice(0, 2); return L[c] ? c : 'en'; } };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.LNI = api;

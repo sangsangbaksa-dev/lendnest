@@ -160,6 +160,8 @@ const plus = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return y
   await fc.fill('#rp-date', plus(0)); await fc.click('dialog button[type=submit]'); await fc.waitForSelector('dialog', { state: 'detached' });
   const focusedId = await fc.evaluate(() => document.activeElement && (document.activeElement.getAttribute('data-id') || document.activeElement.id));
   assert.ok(focusedId, 'focus is back on a control after the dialog closes');
+  await fc.click('#fab'); await fc.fill('#f-title', 'Ladder'); await fc.fill('#f-person', 'Bo'); await fc.fill('#f-remind', plus(0)); await fc.click('#f-save');
+  await fc.waitForSelector('.banner.remind'); await fc.click('.banner.remind button:has-text("Later")'); await fc.waitForSelector('.banner.remind', { state: 'detached' });
   assert.deepEqual(fcErr, [], 'feature page errors: ' + fcErr.join(' | '));
   assert.deepEqual(errs, [], 'console/page errors: ' + errs.join(' | '));
   console.log('e2e ok'); await b.close(); srv.close();

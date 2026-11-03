@@ -103,12 +103,30 @@
     e.nudges = (e.nudges || []).concat({ date: date, tone: tone }).slice(-50); return true;
   }
   function lastNudge(e) { var n = e.nudges || []; return n.length ? n[n.length - 1] : null; }
+  /* reminder dates: a day to be reminded about an open entry. Due when that day is today or earlier. */
+  function setRemindOn(e, date) { e.remindOn = isDate(date) ? date : ''; return e.remindOn; }
+  function remindersDue(st, now) {
+    var t = now || today();
+    return st.entries.filter(function (e) { return !isClosed(e) && e.remindOn && e.remindOn <= t; }).sort(function (a, b) { return a.remindOn < b.remindOn ? -1 : a.remindOn > b.remindOn ? 1 : 0; });
+  }
+  function snoozeReminder(e, days, now) { e.remindOn = addDays(now || today(), days); return e.remindOn; }
+  /* per tag: how many entries are still open or closed, and the money still outstanding per currency */
+  function tagSummary(st) {
+    var out = Object.create(null);
+    st.entries.forEach(function (e) {
+      (e.tags || []).forEach(function (tg) {
+        var k = tg.toLowerCase(); out[k] = out[k] || { tag: tg, open: 0, closed: 0, money: {} }; var r = out[k];
+        if (isClosed(e)) r.closed++; else { r.open++; if (e.kind === 'money') r.money[e.currency] = round2((r.money[e.currency] || 0) + remaining(e)); }
+      });
+    });
+    return Object.keys(out).map(function (k) { return out[k]; }).sort(function (a, b) { return (b.open + b.closed) - (a.open + a.closed) || (a.tag < b.tag ? -1 : a.tag > b.tag ? 1 : 0); });
+  }
   function makeEntry(o) {
     var kind = o.kind === 'money' ? 'money' : 'item';
     var e = { id: o.id || uid(), dir: o.dir === 'in' ? 'in' : 'out', kind: kind, title: str(o.title), personId: o.personId || '',
       amount: kind === 'money' ? (round2(Number(o.amount)) > 0 && Number(o.amount) <= MAX_AMOUNT ? round2(Number(o.amount)) : 0) : 0, currency: str(o.currency, 8).toUpperCase() || 'USD',
       date: isDate(o.date) ? o.date : today(), due: isDate(o.due) ? o.due : '', repayments: [], returnedAt: null, writtenOff: false, extended: [], gone: [], reopened: false, plan: (kind === 'money' && o.plan && Number.isInteger(o.plan.n) && o.plan.n >= 2 && o.plan.n <= 60) ? { n: o.plan.n, every: 30 } : null,
-      note: str(o.note, MAX.note), photo: typeof o.photo === 'string' && /^data:image\/(jpeg|png|webp);base64,/.test(o.photo) && o.photo.length <= MAX_PHOTO ? o.photo : '', created: Number.isFinite(o.created) ? o.created : Date.now(), tags: parseTags(o.tags), nudges: [] };
+      note: str(o.note, MAX.note), photo: typeof o.photo === 'string' && /^data:image\/(jpeg|png|webp);base64,/.test(o.photo) && o.photo.length <= MAX_PHOTO ? o.photo : '', created: Number.isFinite(o.created) ? o.created : Date.now(), tags: parseTags(o.tags), nudges: [], remindOn: isDate(o.remindOn) ? o.remindOn : '' };
     return e;
   }
   function validEntry(o) {
@@ -267,7 +285,7 @@
       e.extended = (Array.isArray(o.extended) ? o.extended : []).filter(function (x) { return x && isDate(x.date) && isDate(x.due); }).map(function (x) { return { date: x.date, due: x.due }; });
       if (Number.isFinite(o.created)) e.created = o.created;
       e.reopened = !!o.reopened; if (e.kind === 'money' && e.plan === null && o.plan) e.plan = makeEntry({ kind: 'money', amount: 1, title: 'x', plan: o.plan }).plan; e.gone = (Array.isArray(o.gone) ? o.gone : []).filter(function (g) { return typeof g === 'string' && ID_RE.test(g); }).slice(-200);
-      e.tags = parseTags(o.tags); e.nudges = (Array.isArray(o.nudges) ? o.nudges : []).filter(function (n) { return n && isDate(n.date) && ['gentle', 'firm', 'final'].indexOf(n.tone) >= 0; }).map(function (n) { return { date: n.date, tone: n.tone }; }).slice(-50);
+      e.remindOn = isDate(o.remindOn) ? o.remindOn : ''; e.tags = parseTags(o.tags); e.nudges = (Array.isArray(o.nudges) ? o.nudges : []).filter(function (n) { return n && isDate(n.date) && ['gentle', 'firm', 'final'].indexOf(n.tone) >= 0; }).map(function (n) { return { date: n.date, tone: n.tone }; }).slice(-50);
       if (e.kind === 'money' && !(e.amount > 0)) return; normalize(e);
       st.entries.push(e);
     });
@@ -298,7 +316,7 @@
   }
 
   var api = { applyPlan: applyPlan, installment: installment, upcoming: upcoming, str: str, normalize: normalize, DAY: DAY, ymd: ymd, today: today, isDate: isDate, parse: parse, addDays: addDays, diffDays: diffDays, uid: uid, round2: round2, newState: newState,
-    parseTags: parseTags, allTags: allTags, hasTag: hasTag, recordNudge: recordNudge, lastNudge: lastNudge,
+    setRemindOn: setRemindOn, remindersDue: remindersDue, snoozeReminder: snoozeReminder, tagSummary: tagSummary, parseTags: parseTags, allTags: allTags, hasTag: hasTag, recordNudge: recordNudge, lastNudge: lastNudge,
     paid: paid, remaining: remaining, isClosed: isClosed, status: status, daysLate: daysLate, daysLeft: daysLeft, repay: repay, markReturned: markReturned,
     writeOff: writeOff, reopen: reopen, extend: extend, makeEntry: makeEntry, validEntry: validEntry, findPerson: findPerson, personByName: personByName,
     addPerson: addPerson, removePerson: removePerson, personStats: personStats, summary: summary, monthlySeries: monthlySeries, rankPeople: rankPeople,

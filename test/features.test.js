@@ -36,3 +36,32 @@ test('sanitize drops malformed reminder entries', () => {
   const raw = { people: [p], entries: [Object.assign(C.makeEntry({ title: 'a', personId: p.id }), { nudges: [{ date: 'nope', tone: 'gentle' }, { date: '2026-10-01', tone: 'x' }, null, { date: '2026-10-02', tone: 'firm' }] })], settings: {} };
   assert.deepEqual(C.sanitize(raw).entries[0].nudges, [{ date: '2026-10-02', tone: 'firm' }]);
 });
+
+test('reminders: due on or before today, oldest first, closed entries never due', () => {
+  const s = C.newState(); const p = C.addPerson(s, 'Mina');
+  const a = C.makeEntry({ title: 'a', personId: p.id, date: '2026-10-01' }), b = C.makeEntry({ title: 'b', personId: p.id, date: '2026-10-01' }), c = C.makeEntry({ title: 'c', personId: p.id, date: '2026-10-01' });
+  C.setRemindOn(a, '2026-10-05'); C.setRemindOn(b, '2026-10-03'); C.setRemindOn(c, '2026-10-20');
+  s.entries.push(a, b, c);
+  assert.deepEqual(C.remindersDue(s, '2026-10-05').map(e => e.title), ['b', 'a']);
+  C.markReturned(a, '2026-10-04'); assert.deepEqual(C.remindersDue(s, '2026-10-05').map(e => e.title), ['b']);
+  assert.equal(C.setRemindOn(b, 'nope'), ''); assert.equal(C.remindersDue(s, '2026-10-05').length, 0);
+});
+test('snooze moves the reminder to a day from now', () => {
+  const e = C.makeEntry({ title: 'x', personId: 'p', date: '2026-10-01' });
+  assert.equal(C.snoozeReminder(e, 3, '2026-10-05'), '2026-10-08');
+});
+test('sanitize keeps a valid reminder date and drops an invalid one', () => {
+  const s = C.newState(); const p = C.addPerson(s, 'Mina');
+  const ok = C.makeEntry({ title: 'a', personId: p.id, remindOn: '2026-10-09' }), bad = C.makeEntry({ title: 'b', personId: p.id, remindOn: '2026-13-40' });
+  s.entries.push(ok, bad); const back = C.sanitize(JSON.parse(JSON.stringify(s)));
+  assert.equal(back.entries[0].remindOn, '2026-10-09'); assert.equal(back.entries[1].remindOn, '');
+});
+test('tag summary: open and closed counts, outstanding money per currency', () => {
+  const s = C.newState(); const p = C.addPerson(s, 'Mina');
+  const m = C.makeEntry({ kind: 'money', amount: 40, currency: 'USD', title: 'loan', personId: p.id, date: '2026-10-01', tags: 'cash' });
+  const i = C.makeEntry({ title: 'drill', personId: p.id, date: '2026-10-01', tags: 'Cash, tools' });
+  s.entries.push(m, i); C.repay(m, 15, '2026-10-02');
+  const r = C.tagSummary(s); const cash = r.find(x => x.tag.toLowerCase() === 'cash');
+  assert.equal(cash.open, 2); assert.equal(cash.closed, 0); assert.deepEqual(cash.money, { USD: 25 });
+  assert.equal(r.find(x => x.tag === 'tools').open, 1);
+});
