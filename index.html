@@ -31,6 +31,31 @@
     <p id="warn-empty" class="hint" hidden>이 달에는 점검할 항목이 없습니다.</p>
   </section>
 
+  <section class="panel" id="ai-panel" aria-labelledby="ai-title">
+    <div class="list-head">
+      <h2 id="ai-title">AI 분석</h2>
+      <button type="button" id="ai-run" class="primary">AI로 분석</button>
+    </div>
+    <p id="ai-key-state" class="hint"></p>
+    <p id="ai-status" class="hint" aria-live="polite"></p>
+    <div id="ai-body"></div>
+    <p id="ai-legend" class="hint"></p>
+    <details id="ai-key-box">
+      <summary>API 키 설정</summary>
+      <form id="ai-key-form" class="form" autocomplete="off">
+        <label>Anthropic API 키
+          <input type="password" id="ai-key" autocomplete="off" spellcheck="false" placeholder="sk-ant-...">
+        </label>
+        <div class="row-btns">
+          <button type="submit" class="primary">키 저장</button>
+          <button type="button" id="ai-key-clear" class="danger" hidden>키 삭제</button>
+        </div>
+      </form>
+      <p class="hint">키는 이 브라우저(localStorage 키 <code>lendnest-ai-key</code>)에만 저장되며 서버로 보내지 않습니다. "AI로 분석"을 누를 때만 api.anthropic.com으로 급여 집계 수치가 전송됩니다. 직원 이름과 메모는 보내지 않고 "직원 N"으로만 표시합니다.</p>
+    </details>
+    <p class="hint">AI 분석과 로컬 점검은 모두 추정치이며 법률·세무 자문이 아닙니다. 실제 지급 전에 고용노동부 또는 노무사와 확인하세요.</p>
+  </section>
+
   <div class="grid">
     <section class="panel">
       <h2>설정 · 직원</h2>

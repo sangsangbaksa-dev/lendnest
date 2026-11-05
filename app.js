@@ -1,5 +1,11 @@
 import {
+  buildAnalysisPrompt,
+  buildPayFacts,
   checkWarnings,
+  isPlausibleKey,
+  localPayAnalysis,
+  parseAnalysisResponse,
+  cleanText,
   monthlyReport,
   monthlyToCSV,
   parseWon,
@@ -11,6 +17,7 @@ import {
   spanMinutes,
   weeklyReport,
 } from './logic.js';
+import { clearKey, loadKey, requestAnalysis, saveKey } from './ai.js';
 
 const KEY = 'workbook-v1';
 const $ = (sel) => document.querySelector(sel);
@@ -25,6 +32,8 @@ const empForm = $('#emp-form');
 let state = load();
 let month = currentMonth();
 let editingShiftId = null;
+// AI 분석: 마지막 로컬 계산 결과와 AI 응답(월이 같을 때만 보여 줌)
+let aiState = { key: loadKey(), busy: false, result: null, resultMonth: null, legend: [], facts: null };
 
 function load() {
   try {
@@ -205,7 +214,138 @@ function render() {
   renderWeeks(weeks);
   renderMonthly(monthly);
   renderShifts();
+  renderAi();
 }
+
+// ── AI 분석 ──
+// 직원 이름은 화면에만 쓰고, AI에는 "직원 N" 번호와 수치만 보냅니다.
+function nameLabels(text) {
+  const map = new Map(aiState.legend.map((x) => [x.label, x.name]));
+  return String(text ?? '').replace(/직원 \d+/g, (m) => (map.has(m) ? `${m}(${map.get(m)})` : m));
+}
+
+function renderAnalysis(res, heading) {
+  const box = $('#ai-body');
+  box.replaceChildren();
+  const h = document.createElement('h3');
+  h.className = 'ai-heading';
+  h.textContent = heading;
+  const sum = document.createElement('p');
+  sum.textContent = nameLabels(res.summary);
+  box.append(h, sum);
+  if (!res.issues.length) {
+    const p = document.createElement('p');
+    p.className = 'hint';
+    p.textContent = '점검에 걸린 항목이 없습니다.';
+    box.append(p);
+  } else {
+    const ul = document.createElement('ul');
+    ul.className = 'warnings';
+    for (const it of res.issues) {
+      const li = document.createElement('li');
+      li.className = it.level === 'error' ? 'error' : it.level === 'warn' ? 'warn' : 'info';
+      const who = it.employee && it.employee !== '전체' ? `${nameLabels(it.employee)}: ` : '';
+      li.textContent = `${it.level === 'info' ? 'ℹ ' : '⚠ '}${who}${nameLabels(it.text)}`;
+      ul.append(li);
+    }
+    box.append(ul);
+  }
+  if (res.nextSteps.length) {
+    const h2 = document.createElement('p');
+    h2.className = 'hint';
+    h2.textContent = '할 일';
+    const ol = document.createElement('ul');
+    ol.className = 'ai-steps';
+    for (const s of res.nextSteps) {
+      const li = document.createElement('li');
+      li.textContent = nameLabels(s);
+      ol.append(li);
+    }
+    box.append(h2, ol);
+  }
+}
+
+function renderAi() {
+  const facts = buildPayFacts(month, state.shifts, state.employees, state.minWage);
+  aiState.facts = facts.facts;
+  aiState.legend = facts.legend;
+  const hasKey = !!aiState.key;
+  const runBtn = $('#ai-run');
+  runBtn.disabled = aiState.busy;
+  runBtn.textContent = aiState.busy ? '분석 중…' : hasKey ? 'AI로 분석' : 'AI로 분석 (키 입력 필요)';
+  $('#ai-key-state').textContent = hasKey ? 'API 키 저장됨' : 'API 키 없음: 로컬 계산 결과를 보여 줍니다';
+  $('#ai-key-clear').hidden = !hasKey;
+  const aiShown = aiState.result && aiState.resultMonth === month;
+  if (aiShown) {
+    renderAnalysis(aiState.result, 'AI 분석 결과 (추정)');
+  } else {
+    renderAnalysis(localPayAnalysis(aiState.facts), hasKey ? '로컬 점검 결과 (추정)' : '로컬 점검 결과 (키 없이 계산, 추정)');
+  }
+  const legend = $('#ai-legend');
+  legend.textContent = aiState.legend.length
+    ? `익명 번호: ${aiState.legend.map((x) => `${x.label} = ${x.name}`).join(', ')} (이름은 화면에만 보이며 AI로 보내지 않습니다)`
+    : '';
+}
+
+async function runAi() {
+  if (aiState.busy) return;
+  if (!aiState.key) {
+    $('#ai-key-box').open = true;
+    $('#ai-key').focus();
+    toast('먼저 Anthropic API 키를 입력하세요.');
+    return;
+  }
+  if (!aiState.facts || !aiState.facts.people.length) {
+    toast(`${month} 근무 기록이 없어 분석할 수 없습니다.`);
+    return;
+  }
+  aiState.busy = true;
+  $('#ai-status').textContent = 'AI가 분석하는 중입니다. 급여 집계 수치만 전송됩니다.';
+  renderAi();
+  try {
+    const prompt = buildAnalysisPrompt(aiState.facts);
+    const data = await requestAnalysis({ key: aiState.key, system: prompt.system, user: prompt.user });
+    const parsed = parseAnalysisResponse(data);
+    if (!parsed) throw new Error('AI 응답에 분석 내용이 없습니다.');
+    aiState.result = parsed;
+    aiState.resultMonth = month;
+    $('#ai-status').textContent = 'AI 분석이 완료되었습니다. 결과는 추정치입니다.';
+  } catch (err) {
+    $('#ai-status').textContent = cleanText(err?.message || 'AI 분석에 실패했습니다.', 200);
+    toast('AI 분석에 실패했습니다. 로컬 점검 결과를 보여 줍니다.');
+  } finally {
+    aiState.busy = false;
+    renderAi();
+  }
+}
+
+$('#ai-run').addEventListener('click', runAi);
+
+$('#ai-key-form').addEventListener('submit', (ev) => {
+  ev.preventDefault();
+  const input = $('#ai-key');
+  const key = input.value.trim();
+  if (!isPlausibleKey(key)) {
+    toast('API 키 형식이 올바르지 않습니다. sk-로 시작하는 키를 입력하세요.');
+    return;
+  }
+  if (!saveKey(key)) {
+    toast('이 브라우저에 키를 저장하지 못했습니다. 이번 세션에서만 사용합니다.');
+  }
+  aiState.key = key;
+  input.value = '';
+  renderAi();
+  toast('API 키를 저장했습니다.');
+});
+
+$('#ai-key-clear').addEventListener('click', () => {
+  if (!confirm('저장된 API 키를 이 브라우저에서 삭제할까요?')) return;
+  clearKey();
+  aiState.key = '';
+  aiState.result = null;
+  renderAi();
+  toast('API 키를 삭제했습니다.');
+});
 
 // ── 직원 ──
 function editWage(id) {

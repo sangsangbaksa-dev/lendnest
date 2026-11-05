@@ -157,6 +157,16 @@ form.form { display: grid; gap: 10px; margin-top: 14px; }
 .warnings li { font-size: 14px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); }
 .warnings li.error { color: var(--danger); border-color: var(--danger); }
 .warnings li.info { color: var(--info); }
+.warnings li.warn { color: var(--warn); border-color: var(--warn); }
+
+.ai-heading { font-size: 15px; margin: 0 0 6px; }
+.ai-steps { margin: 6px 0 0; padding-left: 20px; font-size: 14px; }
+#ai-body p { margin: 6px 0; }
+#ai-key-box { margin-top: 12px; }
+#ai-key-box summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+#ai-key-box .hint { margin-top: 8px; }
+#ai-run:disabled { opacity: .6; cursor: progress; }
+code { font-size: 12px; }
 
 .list-head {
   display: flex;

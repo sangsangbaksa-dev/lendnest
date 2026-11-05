@@ -233,3 +233,196 @@ export function monthlyToCSV(rows) {
   );
   return '﻿' + [head.map(csvCell).join(','), ...body].join('\r\n') + '\r\n';
 }
+
+/* ───────── AI 분석 (순수 함수: 프롬프트 구성, 응답 파싱, 로컬 대체 분석) ─────────
+   AI에는 직원 이름·메모를 보내지 않습니다. 직원은 "직원 N" 익명 번호로만 표시합니다. */
+
+export const AI_MODEL = 'claude-haiku-5-5';
+export const AI_KEY_STORAGE = 'lendnest-ai-key';
+export const AI_API_URL = 'https://api.anthropic.com/v1/messages';
+
+export const AI_SYSTEM_PROMPT = [
+  '당신은 한국 소상공인의 근무시간·급여를 점검하는 도우미입니다.',
+  '입력은 한 달치 근무 집계 JSON입니다. 직원은 익명 번호(직원 N)로만 주어집니다.',
+  '근로기준법 기준으로 쉬운 한국어로 설명하세요. 모든 계산은 추정이며 법률 자문이 아니라는 전제로 답하세요.',
+  '입력에 없는 사실을 지어내지 마세요. 확신이 없는 법적 판단은 level을 info로 두고 "확인 필요"라고 쓰세요.',
+  '반드시 아래 형식의 JSON 객체 하나만 출력하세요. 코드 블록이나 다른 문장을 붙이지 마세요.',
+  '{"summary": "2~3문장 요약", "issues": [{"level": "error|warn|info", "employee": "직원 N 또는 전체", "text": "문제와 근거 한 문장"}], "nextSteps": ["사장님이 할 일 한 문장"]}',
+  'issues는 최대 6개, nextSteps는 최대 4개입니다.',
+].join('\n');
+
+/* Remove control characters, collapse whitespace, cap length. Used on every string that goes into a prompt or the UI. */
+export function cleanText(v, max = 200) {
+  return String(v ?? '')
+    .replace(/[\u0000-\u001f\u007f]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, max);
+}
+
+/* Anthropic keys look like sk-ant-api03-... Only a light shape check; the server decides validity. */
+export function isPlausibleKey(v) {
+  const k = String(v ?? '').trim();
+  return /^sk-[A-Za-z0-9_-]{20,200}$/.test(k);
+}
+
+// 근로기준법 제54조: 근로 4시간 이상 30분, 8시간 이상 1시간 이상 휴게 (근로시간 기준 추정)
+export function breakIssue(shift) {
+  const work = shiftMinutes(shift);
+  if (work >= 480 && shift.breakMin < 60) return 'break8';
+  if (work >= 240 && shift.breakMin < 30) return 'break4';
+  return null;
+}
+
+const krw = (n) => Math.round(n).toLocaleString('ko-KR');
+
+/* Aggregate facts for one month. Returns the object sent to the model (`facts`) and a local-only `legend` mapping labels to names. */
+export function buildPayFacts(month, shifts, employees, minWage) {
+  const safeMonth = cleanText(month, 7);
+  const monthShifts = shifts.filter((s) => s.date.startsWith(safeMonth));
+  const weeks = weeklyReport(shifts, employees).filter((w) => w.weekStart.startsWith(safeMonth));
+  const monthly = monthlyReport(weeks);
+  const legend = [];
+  const labelOf = new Map();
+  for (const r of monthly) {
+    if (labelOf.has(r.empId)) continue;
+    const label = `직원 ${labelOf.size + 1}`;
+    labelOf.set(r.empId, label);
+    legend.push({ label, name: cleanText(r.name, 40) });
+  }
+  const people = monthly.map((r) => {
+    const ws = weeks.filter((w) => w.empId === r.empId);
+    const emp = employees.find((e) => e.id === r.empId);
+    const mine = monthShifts.filter((s) => s.empId === r.empId);
+    return {
+      label: labelOf.get(r.empId),
+      wage: emp ? emp.wage : 0,
+      hours: Math.round(r.hours * 10) / 10,
+      basePay: r.basePay,
+      overtimePay: r.overtimePay,
+      holidayPay: r.holidayPay,
+      total: r.total,
+      weeks: ws.length,
+      overtimeWeeks: ws.filter((w) => w.overtimeHours > 0).length,
+      shortWeeks: ws.filter((w) => w.hours > 0 && w.hours < WEEKLY_HOLIDAY_MIN_HOURS).length,
+      maxWeekHours: Math.round(Math.max(0, ...ws.map((w) => w.hours)) * 10) / 10,
+      belowMinWage: !!minWage && !!emp && emp.wage < minWage,
+      breakShort8: mine.filter((s) => breakIssue(s) === 'break8').length,
+      breakShort4: mine.filter((s) => breakIssue(s) === 'break4').length,
+    };
+  });
+  const sum = (k) => people.reduce((a, p) => a + p[k], 0);
+  const facts = {
+    month: safeMonth,
+    minWage: minWage || null,
+    people,
+    totals: { basePay: sum('basePay'), overtimePay: sum('overtimePay'), holidayPay: sum('holidayPay'), total: sum('total') },
+  };
+  return { facts, legend };
+}
+
+/* Deterministic checks shared by the local panel. Each item has a level, a label (or 전체) and a plain Korean text. */
+export function lawFlags(facts) {
+  const out = [];
+  for (const p of facts.people) {
+    if (p.belowMinWage) {
+      out.push({ level: 'error', label: p.label, text: `시급 ${krw(p.wage)}원이 설정한 최저임금(${krw(facts.minWage)}원)보다 낮습니다.` });
+    }
+    if (p.breakShort8 + p.breakShort4 > 0) {
+      out.push({
+        level: 'warn',
+        label: p.label,
+        text: `휴게시간이 부족한 근무가 ${p.breakShort8 + p.breakShort4}건 있습니다 (근로 8시간 이상 휴게 60분, 4시간 이상 30분, 근로기준법 제54조). 추정입니다.`,
+      });
+    }
+    if (p.maxWeekHours > 52) {
+      out.push({
+        level: 'warn',
+        label: p.label,
+        text: `한 주 근무가 ${p.maxWeekHours}시간이라 주 52시간 상한(근로기준법 제53조)을 넘을 수 있습니다. 5인 이상 사업장 기준입니다.`,
+      });
+    }
+    if (p.overtimeWeeks > 0) {
+      out.push({ level: 'info', label: p.label, text: `주 40시간을 넘긴 주가 ${p.overtimeWeeks}주 있어 연장 가산이 붙습니다.` });
+    }
+    if (p.shortWeeks > 0) {
+      out.push({ level: 'info', label: p.label, text: `주 15시간 미만인 주가 ${p.shortWeeks}주 있어 그 주는 주휴수당 대상이 아닙니다.` });
+    }
+  }
+  return out;
+}
+
+/* Result shape shared by the local fallback and the AI answer: { summary, issues, nextSteps, source }. */
+export function localPayAnalysis(facts) {
+  const n = facts.people.length;
+  const summary = n
+    ? `${facts.month} 기준 ${n}명, 예상 지급 합계 ${krw(facts.totals.total)}원(세금·공제 전, 추정). 연장 가산 ${krw(facts.totals.overtimePay)}원, 주휴수당 ${krw(facts.totals.holidayPay)}원입니다.`
+    : `${facts.month}에는 근무 기록이 없어 분석할 내용이 없습니다.`;
+  return {
+    summary,
+    issues: lawFlags(facts).map((f) => ({ level: f.level, employee: f.label, text: f.text })),
+    nextSteps: [
+      '휴게시간과 근무 시각은 실제 기록(출입 기록, 근무표)과 맞는지 확인하세요.',
+      '근로계약서의 소정근로시간과 주휴수당 개근 조건을 확인하세요.',
+      '최저임금과 가산율은 고용노동부 고시와 노무사 상담으로 최종 확인하세요.',
+    ],
+    source: 'local',
+  };
+}
+
+export function buildAnalysisPrompt(facts) {
+  return {
+    system: AI_SYSTEM_PROMPT,
+    user: `다음은 ${cleanText(facts.month, 7)} 근무 집계(JSON)입니다.\n${JSON.stringify(facts, null, 1)}`,
+  };
+}
+
+function normIssue(x) {
+  if (!x || typeof x !== 'object') return null;
+  const text = cleanText(x.text, 300);
+  if (!text) return null;
+  return {
+    level: ['error', 'warn', 'info'].includes(x.level) ? x.level : 'info',
+    employee: cleanText(x.employee, 20) || '전체',
+    text,
+  };
+}
+
+/* Parses the model's text. Accepts bare JSON, fenced JSON, or plain prose (kept as the summary). Returns null for empty text. */
+export function parseAnalysisText(text) {
+  const raw = String(text ?? '').trim();
+  if (!raw) return null;
+  const body = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+  const start = body.indexOf('{');
+  const end = body.lastIndexOf('}');
+  if (start >= 0 && end > start) {
+    try {
+      const o = JSON.parse(body.slice(start, end + 1));
+      if (o && typeof o === 'object' && !Array.isArray(o)) {
+        return {
+          summary: cleanText(o.summary, 600),
+          issues: (Array.isArray(o.issues) ? o.issues : []).slice(0, 6).map(normIssue).filter(Boolean),
+          nextSteps: (Array.isArray(o.nextSteps) ? o.nextSteps : [])
+            .filter((s) => typeof s === 'string')
+            .slice(0, 4)
+            .map((s) => cleanText(s, 200))
+            .filter(Boolean),
+          source: 'ai',
+        };
+      }
+    } catch {
+      /* fall through to plain text */
+    }
+  }
+  return { summary: cleanText(raw, 800), issues: [], nextSteps: [], source: 'ai-text' };
+}
+
+/* Messages API response -> analysis. Only text blocks are used; thinking blocks are ignored. */
+export function parseAnalysisResponse(data) {
+  const blocks = Array.isArray(data?.content) ? data.content : [];
+  const text = blocks
+    .filter((b) => b && b.type === 'text' && typeof b.text === 'string')
+    .map((b) => b.text)
+    .join('\n');
+  return parseAnalysisText(text);
+}
