@@ -345,6 +345,30 @@
     es: { remindOn: 'Recordármelo el', remindH: 'Recordatorios', remindDue: '{n} recordatorios pendientes', remindOpen: 'Abrir', remindLater: 'Más tarde (3 días)', tagSumH: 'Por etiqueta', tagCounts: '{o} abiertos · {c} devueltos', tagOwed: 'Aún pendiente: {a}' }
   };
   Object.keys(EXTRA2).forEach(function (l) { Object.assign(L[l], EXTRA2[l]); });
+  var EXTRA3 = {
+    en: { fStatus: 'Status', fKind: 'Type', fWho: 'Person', fAny: 'Any', fActive: 'Open', fClosed: 'Returned or written off', fAnyone: 'Everyone', printStmt: 'Print statement', colWhat: 'What', colDir: 'Direction', returnNoteBtn: 'Return with a note', conditionLbl: 'Condition when returned', conditionPh: 'Scratches, missing parts, anything to note' },
+    ko: { fStatus: '상태', fKind: '종류', fWho: '사람', fAny: '전체', fActive: '진행 중', fClosed: '반납 또는 손실 처리', fAnyone: '모두', printStmt: '명세서 인쇄', colWhat: '내용', colDir: '구분', returnNoteBtn: '상태를 적고 반납', conditionLbl: '반납할 때 상태', conditionPh: '흠집, 빠진 부품, 남길 내용' },
+    ja: { fStatus: '状態', fKind: '種類', fWho: '相手', fAny: 'すべて', fActive: '未返却', fClosed: '返却済みまたは回収不能', fAnyone: 'すべての相手', printStmt: '明細を印刷', colWhat: '内容', colDir: '区分', returnNoteBtn: '状態を書いて返却', conditionLbl: '返却時の状態', conditionPh: '傷、欠品、メモ' },
+    zh: { fStatus: '状态', fKind: '类型', fWho: '人员', fAny: '全部', fActive: '未结', fClosed: '已归还或已注销', fAnyone: '所有人', printStmt: '打印对账单', colWhat: '内容', colDir: '方向', returnNoteBtn: '填写状态后归还', conditionLbl: '归还时的状态', conditionPh: '划痕、缺件或其他备注' },
+    es: { fStatus: 'Estado', fKind: 'Tipo', fWho: 'Persona', fAny: 'Todos', fActive: 'Abiertos', fClosed: 'Devueltos o perdidos', fAnyone: 'Todas las personas', printStmt: 'Imprimir extracto', colWhat: 'Qué', colDir: 'Sentido', returnNoteBtn: 'Devolver con nota', conditionLbl: 'Estado al devolverlo', conditionPh: 'Arañazos, piezas que faltan, algo que anotar' }
+  };
+  Object.keys(EXTRA3).forEach(function (l) { Object.assign(L[l], EXTRA3[l]); });
+  var EXTRA4 = {
+    en: { peopleList: 'People', hasWhat: 'Who has what', hasNone: 'Nothing is out right now.', balH: 'Balances', digestH: 'Due soon', digestN: '{n} due within 7 days or already late.', digestMore: 'and {n} more in the list', exportOpen: 'Export open items (CSV)' },
+    ko: { peopleList: '사람', hasWhat: '누가 무엇을', hasNone: '지금 빌려준 것이 없어요.', balH: '잔액', digestH: '곧 기한', digestN: '7일 안에 기한이 오거나 이미 지난 항목 {n}건.', digestMore: '그 밖에 {n}건 더', exportOpen: '진행 중 항목 내보내기 (CSV)' },
+    ja: { peopleList: '人', hasWhat: '誰に何があるか', hasNone: '今は貸し出し中のものはありません。', balH: '残高', digestH: 'まもなく期限', digestN: '7日以内に期限が来る、または期限切れの項目 {n}件。', digestMore: 'ほか {n} 件', exportOpen: '未返却の項目を書き出す (CSV)' },
+    zh: { peopleList: '人员', hasWhat: '谁有什么', hasNone: '目前没有借出的东西。', balH: '余额', digestH: '即将到期', digestN: '7 天内到期或已逾期的 {n} 项。', digestMore: '另外还有 {n} 项', exportOpen: '导出未结事项 (CSV)' },
+    es: { peopleList: 'Personas', hasWhat: 'Quién tiene qué', hasNone: 'Ahora mismo no hay nada fuera.', balH: 'Saldos', digestH: 'Próximos vencimientos', digestN: '{n} vencen en los próximos 7 días o ya están vencidos.', digestMore: 'y {n} más en la lista', exportOpen: 'Exportar pendientes (CSV)' }
+  };
+  Object.keys(EXTRA4).forEach(function (l) { Object.assign(L[l], EXTRA4[l]); });
+  var EXTRA5 = {
+    en: { fSort: 'Sort', fSortDue: 'Due date', fSortName: 'Name', fSortRecent: 'Newest first', stmtCsv: 'Statement (CSV)' },
+    ko: { fSort: '정렬', fSortDue: '기한순', fSortName: '이름순', fSortRecent: '최근순', stmtCsv: '명세서 (CSV)' },
+    ja: { fSort: '並び替え', fSortDue: '期限順', fSortName: '名前順', fSortRecent: '新しい順', stmtCsv: '明細 (CSV)' },
+    zh: { fSort: '排序', fSortDue: '按到期日', fSortName: '按名称', fSortRecent: '最新优先', stmtCsv: '对账单 (CSV)' },
+    es: { fSort: 'Orden', fSortDue: 'Por vencimiento', fSortName: 'Por nombre', fSortRecent: 'Más recientes', stmtCsv: 'Extracto (CSV)' }
+  };
+  Object.keys(EXTRA5).forEach(function (l) { Object.assign(L[l], EXTRA5[l]); });
   var api = { L: L, LAND: LAND, langs: ['en', 'ko', 'ja', 'zh', 'es'],
     detect: function (nav) { var c = ((nav && (nav.language || (nav.languages || [])[0])) || 'en').toLowerCase().slice(0, 2); return L[c] ? c : 'en'; } };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.LNI = api;

@@ -54,16 +54,17 @@
     applyPlan(e);
     return true;
   }
-  function markReturned(e, date) {
+  /* note: optional condition of an item when it comes back (items only) */
+  function markReturned(e, date, note) {
     if (isClosed(e) || !isDate(date)) return false;
     if (e.kind === 'money') { var r = remaining(e); if (r > 0) e.repayments.push({ id: uid(), date: date, amount: r, auto: true }); }
-    e.returnedAt = date; e.reopened = false; return true;
+    e.returnedAt = date; e.reopened = false; e.returnNote = e.kind === 'item' ? str(note, MAX.note) : ''; return true;
   }
   function writeOff(e) { if (isClosed(e)) return false; e.writtenOff = true; e.reopened = false; return true; }
   function reopen(e) {
     if (!isClosed(e)) return false;
     if (e.kind === 'money' && e.returnedAt) { if (round2(e.amount - e.repayments.filter(function (r) { return !r.auto; }).reduce(function (a, r) { return a + r.amount; }, 0)) <= 0) return false; e.gone = (e.gone || []).concat(e.repayments.filter(function (r) { return r.auto; }).map(function (r) { return r.id; })).slice(-200); e.repayments = e.repayments.filter(function (r) { return !r.auto; }); if (remaining(e) === 0) return false; }
-    e.returnedAt = null; e.writtenOff = false; e.reopened = true; return true;
+    e.returnedAt = null; e.writtenOff = false; e.reopened = true; e.returnNote = ''; return true;
   }
   /* after an edit: keep the closed flag consistent with the money left */
   function normalize(e) {
@@ -126,7 +127,7 @@
     var e = { id: o.id || uid(), dir: o.dir === 'in' ? 'in' : 'out', kind: kind, title: str(o.title), personId: o.personId || '',
       amount: kind === 'money' ? (round2(Number(o.amount)) > 0 && Number(o.amount) <= MAX_AMOUNT ? round2(Number(o.amount)) : 0) : 0, currency: str(o.currency, 8).toUpperCase() || 'USD',
       date: isDate(o.date) ? o.date : today(), due: isDate(o.due) ? o.due : '', repayments: [], returnedAt: null, writtenOff: false, extended: [], gone: [], reopened: false, plan: (kind === 'money' && o.plan && Number.isInteger(o.plan.n) && o.plan.n >= 2 && o.plan.n <= 60) ? { n: o.plan.n, every: 30 } : null,
-      note: str(o.note, MAX.note), photo: typeof o.photo === 'string' && /^data:image\/(jpeg|png|webp);base64,/.test(o.photo) && o.photo.length <= MAX_PHOTO ? o.photo : '', created: Number.isFinite(o.created) ? o.created : Date.now(), tags: parseTags(o.tags), nudges: [], remindOn: isDate(o.remindOn) ? o.remindOn : '' };
+      note: str(o.note, MAX.note), photo: typeof o.photo === 'string' && /^data:image\/(jpeg|png|webp);base64,/.test(o.photo) && o.photo.length <= MAX_PHOTO ? o.photo : '', created: Number.isFinite(o.created) ? o.created : Date.now(), tags: parseTags(o.tags), nudges: [], remindOn: isDate(o.remindOn) ? o.remindOn : '', returnNote: str(o.returnNote, MAX.note) };
     return e;
   }
   function validEntry(o) {
@@ -156,7 +157,7 @@
       if (e.writtenOff) { if (lent) s.writtenOff++; return; }
       if (e.returnedAt) {
         if (!lent) return;
-        kept.push(diffDays(e.returnedAt, e.date));
+        kept.push(Math.max(0, diffDays(e.returnedAt, e.date)));
         if (e.due && e.returnedAt > e.due) { s.late++; lateDays.push(diffDays(e.returnedAt, e.due)); } else s.onTime++;
         return;
       }
@@ -218,6 +219,59 @@
     return (e.title + ' ' + e.note + ' ' + (p ? p.name : '') + ' ' + (e.tags || []).join(' ')).toLowerCase().indexOf(q) >= 0;
   }
 
+  /* list filter: status (all | active | overdue | soon | closed), kind (all | item | money), personId ('' = everyone) */
+  function filterEntries(list, f, now) {
+    f = f || {}; var t = now || today();
+    return list.filter(function (e) {
+      if ((f.kind === 'item' || f.kind === 'money') && e.kind !== f.kind) return false;
+      if (f.personId && e.personId !== f.personId) return false;
+      if (f.status === 'closed') return isClosed(e);
+      if (f.status === 'active') return !isClosed(e);
+      if (f.status === 'overdue' || f.status === 'soon') return !isClosed(e) && status(e, t) === f.status;
+      return true;
+    });
+  }
+
+  /* who has what: open entries grouped by person, names A to Z; people with nothing open are left out */
+  function groupOpenByPerson(st, now) {
+    var out = [];
+    st.people.forEach(function (p) {
+      var list = sortOpen(st.entries.filter(function (e) { return e.personId === p.id && !isClosed(e); }), now);
+      if (list.length) out.push({ person: p, entries: list });
+    });
+    return out.sort(function (a, b) { return a.person.name.localeCompare(b.person.name); });
+  }
+  /* list order: due date (urgency, the default), name, or newest first */
+  function sortBy(list, mode, now) {
+    if (mode === 'name') return list.slice().sort(function (a, b) { return a.title.localeCompare(b.title) || a.created - b.created; });
+    if (mode === 'recent') return list.slice().sort(function (a, b) { return b.created - a.created; });
+    return sortOpen(list, now);
+  }
+  /* balances: money still open per person, each way, per currency (closed entries do not count) */
+  function balances(st) {
+    var out = Object.create(null);
+    st.entries.forEach(function (e) {
+      if (isClosed(e) || e.kind !== 'money') return;
+      var p = out[e.personId] = out[e.personId] || { personId: e.personId, owedToMe: {}, iOwe: {} };
+      var m = e.dir === 'out' ? p.owedToMe : p.iOwe; m[e.currency] = round2((m[e.currency] || 0) + remaining(e));
+    });
+    return Object.keys(out).map(function (k) { return out[k]; });
+  }
+  /* due-soon digest: open entries due within `days` days, overdue ones included, most urgent first */
+  function dueDigest(st, days, now) {
+    var t = now || today(), lim = days == null ? 7 : days;
+    return sortOpen(st.entries.filter(function (e) { return !isClosed(e) && !!e.due && diffDays(e.due, t) <= lim; }), t);
+  }
+  /* CSV of open items only, most urgent first; with personId, one person's statement */
+  function toOpenCSV(st, now, personId) {
+    var head = ['direction', 'kind', 'title', 'person', 'amount', 'remaining', 'currency', 'date', 'due', 'status', 'tags'];
+    var rows = sortOpen(st.entries.filter(function (e) { return !isClosed(e) && (!personId || e.personId === personId); }), now).map(function (e) {
+      var p = findPerson(st, e.personId);
+      return [e.dir === 'out' ? 'lent' : 'borrowed', e.kind, e.title, p ? p.name : '', e.kind === 'money' ? e.amount : '', e.kind === 'money' ? remaining(e) : '', e.kind === 'money' ? e.currency : '', e.date, e.due, status(e, now), (e.tags || []).join('; ')].map(csvCell).join(',');
+    });
+    return '﻿' + [head.join(',')].concat(rows).join('\r\n') + '\r\n';
+  }
+
   /* ---- loan check before lending ---- */
   function loanCheck(st, personId, now) {
     var s = personStats(st, personId, now), level = 'new';
@@ -238,10 +292,10 @@
     return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
   }
   function toCSV(st, now) {
-    var head = ['direction', 'kind', 'title', 'person', 'amount', 'repaid', 'currency', 'date', 'due', 'status', 'returned', 'note', 'tags'];
+    var head = ['direction', 'kind', 'title', 'person', 'amount', 'repaid', 'currency', 'date', 'due', 'status', 'returned', 'note', 'tags', 'condition'];
     var rows = st.entries.slice().sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; }).map(function (e) {
       var p = findPerson(st, e.personId);
-      return [e.dir === 'out' ? 'lent' : 'borrowed', e.kind, e.title, p ? p.name : '', e.kind === 'money' ? e.amount : '', e.kind === 'money' ? paid(e) : '', e.kind === 'money' ? e.currency : '', e.date, e.due, status(e, now), e.returnedAt || '', e.note, (e.tags || []).join('; ')].map(csvCell).join(',');
+      return [e.dir === 'out' ? 'lent' : 'borrowed', e.kind, e.title, p ? p.name : '', e.kind === 'money' ? e.amount : '', e.kind === 'money' ? paid(e) : '', e.kind === 'money' ? e.currency : '', e.date, e.due, status(e, now), e.returnedAt || '', e.note, (e.tags || []).join('; '), e.returnNote || ''].map(csvCell).join(',');
     });
     return '\ufeff' + [head.join(',')].concat(rows).join('\r\n') + '\r\n';
   }
@@ -273,7 +327,10 @@
     var pmap = Object.create(null), seenP = Object.create(null);
     obj.people.slice(0, MAX.people).forEach(function (p) {
       if (!p || typeof p.id !== 'string' || !str(p.name, 60) || pmap[p.id]) return;
-      var id = ID_RE.test(p.id) && !seenP[p.id] ? p.id : uid(); seenP[id] = 1; pmap[p.id] = id; st.people.push({ id: id, name: str(p.name, 60), note: str(p.note, MAX.note) });
+      /* a second record with the same name (case-insensitive) joins the first one instead of splitting the person */
+      var nm = str(p.name, 60), same = st.people.filter(function (q) { return q.name.toLowerCase() === nm.toLowerCase(); })[0];
+      if (same) { pmap[p.id] = same.id; return; }
+      var id = ID_RE.test(p.id) && !seenP[p.id] ? p.id : uid(); seenP[id] = 1; pmap[p.id] = id; st.people.push({ id: id, name: nm, note: str(p.note, MAX.note) });
     });
     var seen = Object.create(null);
     obj.entries.slice(0, MAX.entries).forEach(function (o) {
@@ -281,7 +338,7 @@
       var e = makeEntry(o); e.personId = pmap[o.personId]; e.id = ID_RE.test(o.id) ? o.id : uid();
       e.repayments = (Array.isArray(o.repayments) ? o.repayments : []).filter(function (r) { return r && isDate(r.date) && Number(r.amount) > 0 && Number(r.amount) <= MAX_AMOUNT; }).map(function (r) { var x = { id: ID_RE.test(r.id) ? r.id : uid(), date: r.date, amount: round2(Number(r.amount)) }; if (r.auto) x.auto = true; return x; });
       if (e.kind === 'money') { var sum = 0; e.repayments = e.repayments.map(function (r) { var a = Math.min(r.amount, round2(e.amount - sum)); sum = round2(sum + a); return a > 0 ? Object.assign(r, { amount: a }) : null; }).filter(Boolean); }
-      e.returnedAt = isDate(o.returnedAt) ? o.returnedAt : null; e.writtenOff = !!o.writtenOff;
+      e.returnedAt = isDate(o.returnedAt) ? (o.returnedAt < e.date ? e.date : o.returnedAt) : null; /* a return before the lend date is moved up to it */ e.writtenOff = !!o.writtenOff; if (!e.returnedAt) e.returnNote = '';
       e.extended = (Array.isArray(o.extended) ? o.extended : []).filter(function (x) { return x && isDate(x.date) && isDate(x.due); }).map(function (x) { return { date: x.date, due: x.due }; });
       if (Number.isFinite(o.created)) e.created = o.created;
       e.reopened = !!o.reopened; if (e.kind === 'money' && e.plan === null && o.plan) e.plan = makeEntry({ kind: 'money', amount: 1, title: 'x', plan: o.plan }).plan; e.gone = (Array.isArray(o.gone) ? o.gone : []).filter(function (g) { return typeof g === 'string' && ID_RE.test(g); }).slice(-200);
@@ -306,7 +363,7 @@
         ex.gone = ex.gone || []; (e.gone || []).forEach(function (g) { if (ex.gone.indexOf(g) < 0) ex.gone.push(g); });
         if (ex.kind === 'money' && e.kind === 'money') e.repayments.forEach(function (r) { if (!have[r.id] && ex.gone.indexOf(r.id) < 0) { ex.repayments.push(r); changed = true; } });
         e.extended.forEach(function (x) { if (!ex.extended.some(function (y) { return y.date === x.date && y.due === x.due; })) { ex.extended.push(x); changed = true; } });
-        if (e.returnedAt && !ex.returnedAt && ex.kind === e.kind && !ex.reopened) { ex.returnedAt = e.returnedAt; changed = true; }
+        if (e.returnedAt && !ex.returnedAt && ex.kind === e.kind && !ex.reopened) { ex.returnedAt = e.returnedAt; ex.returnNote = e.returnNote || ''; changed = true; }
         if (e.writtenOff && !ex.writtenOff && !ex.returnedAt && !ex.reopened) { ex.writtenOff = true; changed = true; }
         if (ex.kind !== 'money') normalize(ex); else { var sm = 0; ex.repayments = ex.repayments.map(function (r) { var a = Math.min(r.amount, round2(ex.amount - sm)); sm = round2(sm + a); return a > 0 ? Object.assign(r, { amount: a }) : null; }).filter(Boolean); normalize(ex); }
         if (changed) added++;
@@ -320,6 +377,6 @@
     paid: paid, remaining: remaining, isClosed: isClosed, status: status, daysLate: daysLate, daysLeft: daysLeft, repay: repay, markReturned: markReturned,
     writeOff: writeOff, reopen: reopen, extend: extend, makeEntry: makeEntry, validEntry: validEntry, findPerson: findPerson, personByName: personByName,
     addPerson: addPerson, removePerson: removePerson, personStats: personStats, summary: summary, monthlySeries: monthlySeries, rankPeople: rankPeople,
-    longestOut: longestOut, sortOpen: sortOpen, match: match, loanCheck: loanCheck, fill: fill, toCSV: toCSV, toICS: toICS, sanitize: sanitize, merge: merge, MAX_PHOTO: MAX_PHOTO };
+    longestOut: longestOut, sortOpen: sortOpen, match: match, filterEntries: filterEntries, groupOpenByPerson: groupOpenByPerson, balances: balances, dueDigest: dueDigest, toOpenCSV: toOpenCSV, sortBy: sortBy, loanCheck: loanCheck, fill: fill, toCSV: toCSV, toICS: toICS, sanitize: sanitize, merge: merge, MAX_PHOTO: MAX_PHOTO };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.LN = api;
 })(typeof window !== 'undefined' ? window : globalThis);
