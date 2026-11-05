@@ -72,3 +72,33 @@ dialog .in{padding:18px}dialog .row{display:flex;gap:8px;justify-content:flex-en
 .tl .link{min-width:44px}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 [hidden]{display:none!important}
+.filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px 10px;margin:12px 0 0}
+.filters label{margin:0 0 4px}
+.filters select{background:var(--card);color:var(--ink)}
+.mode{margin:4px 0 8px}
+.empty-art{display:block;width:120px;height:80px;margin:0 auto 10px}
+.link-row{display:flex;gap:10px;align-items:center;width:100%;text-align:left;background:none;border:0;padding:8px 0;min-height:44px;border-radius:8px}
+.digest ul,.who ul{list-style:none;margin:6px 0 0;padding:0}
+.digest li,.who li{border-top:1px solid var(--line)}
+.who h2{margin:0 0 2px}
+.balances h2{margin-bottom:8px}
+.remind-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.link-row:hover{background:var(--pri-soft)}
+.link-row{padding:8px 6px;margin:0 -6px;overflow-wrap:anywhere}
+@keyframes ln-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.card,.empty,.stats,.banner{animation:ln-in .22s ease-out both}
+button{transition:background-color .15s,border-color .15s,color .15s,transform .1s}
+button:active{transform:scale(.98)}
+.seg span{transition:background-color .15s,color .15s,border-color .15s}
+@media (prefers-reduced-motion:reduce){.card,.empty,.stats,.banner{animation:none}button:active{transform:none}}
+#print-area{display:none}
+@media print{
+  body>*:not(#print-area){display:none!important}
+  body{background:#fff!important;color:#000!important;padding:0!important}
+  #print-area{display:block!important;font-size:11pt}
+  #print-area *{color:#000!important;background:transparent!important}
+  #print-area h1{font-size:16pt;margin:0 0 6pt}
+  #print-area p{margin:6pt 0}
+  #print-area table{width:100%;border-collapse:collapse;margin-top:12pt}
+  #print-area th,#print-area td{border-bottom:1px solid #999;padding:6pt 4pt;text-align:left;vertical-align:top}
+}
