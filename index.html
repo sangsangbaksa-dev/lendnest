@@ -1,22 +1,116 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Lendnest · Track what you lend and borrow</title>
-<meta name="description" content="Lendnest tracks items and money you lend or borrow, with return dates, installment plans and ready-to-send reminders in 5 languages. One-time purchase, private, works offline.">
-<meta property="og:title" content="Lendnest"><meta property="og:description" content="Never wonder who has your drill again."><meta property="og:image" content="/og.png"><meta property="og:type" content="website"><meta name="twitter:card" content="summary_large_image">
-<meta name="theme-color" content="#0f766e"><link rel="icon" href="/icon.svg" type="image/svg+xml"><link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/icon-192.png"><link rel="stylesheet" href="/landing.css">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Lendnest","applicationCategory":"LifestyleApplication","operatingSystem":"Any (web browser)","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}</script></head>
-<body><header class="top"><div class="wrap bar"><a class="logo" href="/"><img src="/icon.svg" alt="" width="32" height="32"><span>Lendnest</span></a><div class="right"><label class="sr" for="lang" data-i="langLabel">Language</label><select id="lang"></select><a class="btn sm" href="/app/" data-i="navApp">Open app</a></div></div></header>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>근무장부</title>
+<meta name="description" content="직원·알바 근무시간을 기록하고 주휴수당, 연장근로 가산, 최저임금 미달을 점검합니다.">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="top">
+  <div>
+    <h1>근무장부</h1>
+    <p class="sub">근무시간을 기록하면 주휴수당과 연장근로 가산을 주 단위로 계산하고, 법정 기준 위반 가능성을 알려줍니다.</p>
+  </div>
+  <label class="inline">대상 월 <select id="month-sel"></select></label>
+</header>
+
 <main>
-<section class="hero"><div class="wrap two-col"><div><p class="badge" data-i="badge"></p><h1 data-i="h1">Never wonder who has your drill again</h1><p class="lede" data-i="lede"></p><p class="cta"><a class="btn" href="/app/" data-i="cta">Open the app</a><span class="free" data-i="free"></span></p><noscript><p class="lede">Lendnest needs JavaScript. <a href="/app/">Open the app</a>.</p></noscript></div>
-<div class="phone" aria-hidden="true"><div class="screen"><div class="mock-top"><b>Lendnest</b></div>
-<div class="mcard late"><span class="av">M</span><div><strong data-i="mockA"></strong><small>$25</small></div><em>+5</em></div>
-<div class="mcard"><span class="av">J</span><div><strong data-i="mockB"></strong><small>$40 / $100</small><i class="mbar"><u></u></i></div><em class="ok">2/3</em></div>
-<div class="mcard soon"><span class="av">D</span><div><strong data-i="mockC"></strong><small>$60</small></div><em class="warn">−2</em></div>
-</div></div></div></section>
-<section class="wrap"><div class="grid" id="feat"><article><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg><h3 data-i="f1h"></h3><p data-i="f1b"></p></article><article><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><h3 data-i="f2h"></h3><p data-i="f2b"></p></article><article><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z M9 12l2 2 4-4"/></svg><h3 data-i="f3h"></h3><p data-i="f3b"></p></article><article><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg><h3 data-i="f4h"></h3><p data-i="f4b"></p></article><article><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18v17H3zM3 9h18M8 2v4M16 2v4"/></svg><h3 data-i="f5h"></h3><p data-i="f5b"></p></article><article><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM4 15l4-4 4 4 3-3 5 5"/></svg><h3 data-i="f6h"></h3><p data-i="f6b"></p></article><article><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><h3 data-i="f7h"></h3><p data-i="f7b"></p></article><article><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM8 9h8M8 13h8M8 17h5"/></svg><h3 data-i="f8h"></h3><p data-i="f8b"></p></article><article><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><h3 data-i="f9h"></h3><p data-i="f9b"></p></article></div></section>
-<section class="steps"><div class="wrap"><h2 data-i="stepsT"></h2><ol><li><b>1</b><h3 data-i="s1h"></h3><p data-i="s1b"></p></li><li><b>2</b><h3 data-i="s2h"></h3><p data-i="s2b"></p></li><li><b>3</b><h3 data-i="s3h"></h3><p data-i="s3b"></p></li></ol></div></section>
-<section class="wrap faq"><h2 data-i="faqT"></h2><details open><summary data-i="q1"></summary><p data-i="a1"></p></details><details><summary data-i="q2"></summary><p data-i="a2"></p></details><details><summary data-i="q3"></summary><p data-i="a3"></p></details></section>
-<section class="final"><div class="wrap"><h2 data-i="ctaH"></h2><p><a class="btn light" href="/app/" data-i="cta">Open the app</a></p></div></section>
+  <section class="cards" aria-label="월간 요약">
+    <article class="card"><span>근무시간 합계</span><strong id="c-hours">0시간</strong></article>
+    <article class="card"><span>기본급</span><strong id="c-base">0원</strong></article>
+    <article class="card"><span>연장근로 가산</span><strong id="c-ot">0원</strong></article>
+    <article class="card"><span>주휴수당</span><strong id="c-holiday">0원</strong></article>
+    <article class="card accent"><span>예상 지급 합계</span><strong id="c-total">0원</strong><small>세금·공제 전 금액</small></article>
+  </section>
+
+  <section class="panel" id="warn-panel">
+    <h2>점검 알림</h2>
+    <ul id="warnings" class="warnings"></ul>
+    <p id="warn-empty" class="hint" hidden>이 달에는 점검할 항목이 없습니다.</p>
+  </section>
+
+  <div class="grid">
+    <section class="panel">
+      <h2>설정 · 직원</h2>
+      <label>최저임금 (원/시간)
+        <input type="text" inputmode="numeric" id="min-wage" placeholder="고시 금액을 직접 입력">
+      </label>
+      <p class="hint">입력하지 않으면 최저임금 점검을 건너뜁니다. 금액은 해마다 바뀌므로 고용노동부 고시를 확인하세요.</p>
+
+      <form id="emp-form" class="form" autocomplete="off">
+        <label>이름 <input type="text" name="name" maxlength="40" required></label>
+        <label>시급 (원) <input type="text" inputmode="numeric" name="wage" placeholder="예: 10,000" required></label>
+        <button type="submit" class="primary">직원 추가</button>
+      </form>
+      <ul id="emp-list" class="emp-list"></ul>
+    </section>
+
+    <section class="panel">
+      <h2 id="shift-title">근무 기록 입력</h2>
+      <form id="shift-form" class="form" autocomplete="off">
+        <label>직원 <select name="empId" required></select></label>
+        <div class="two">
+          <label>날짜 <input type="date" name="date" required></label>
+          <label>휴게 (분) <input type="number" name="breakMin" min="0" max="1439" step="1" value="0"></label>
+        </div>
+        <div class="two">
+          <label>출근 <input type="time" name="start" required></label>
+          <label>퇴근 <input type="time" name="end" required></label>
+        </div>
+        <p id="preview" class="hint" aria-live="polite"></p>
+        <label>메모 <input type="text" name="memo" maxlength="200"></label>
+        <div class="row-btns">
+          <button type="submit" class="primary" id="shift-submit">기록 추가</button>
+          <button type="button" id="shift-cancel" hidden>수정 취소</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <section class="panel">
+    <h2>주간 집계 <span class="hint">(주는 월요일 기준, 주 시작일이 속한 달에 표시)</span></h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>주 시작</th><th>직원</th><th class="num">근무</th><th class="num">연장</th><th class="num">주휴시간</th><th class="num">합계</th></tr></thead>
+        <tbody id="weeks"></tbody>
+      </table>
+    </div>
+    <p id="weeks-empty" class="hint" hidden>이 달에는 근무 기록이 없습니다.</p>
+  </section>
+
+  <section class="panel">
+    <div class="list-head">
+      <h2>월별 직원 집계</h2>
+      <button type="button" id="export-monthly">집계 CSV</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>직원</th><th class="num">근무시간</th><th class="num">기본급</th><th class="num">연장 가산</th><th class="num">주휴수당</th><th class="num">합계</th></tr></thead>
+        <tbody id="monthly"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="list-head">
+      <h2>근무 기록</h2>
+      <button type="button" id="export-shifts">기록 CSV</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>날짜</th><th>직원</th><th>시간</th><th class="num">근무</th><th>메모</th><th></th></tr></thead>
+        <tbody id="shifts"></tbody>
+      </table>
+    </div>
+    <p id="shifts-empty" class="hint" hidden>이 달에는 기록이 없습니다.</p>
+  </section>
+
+  <p class="foot">주휴수당·연장 가산은 추정치입니다. 개근 여부, 소정근로시간, 야간·휴일 가산, 세금과 공제는 반영하지 않습니다. 데이터는 이 브라우저(localStorage)에만 저장됩니다.</p>
 </main>
-<footer class="wrap foot"><a href="/privacy" data-i="priv">Privacy</a> · <a href="/terms" data-i="terms">Terms</a></footer>
-<script src="/app/i18n.js"></script><script src="/landing.js"></script></body></html>
+
+<div id="toast" role="status" aria-live="polite" hidden></div>
+<script type="module" src="app.js"></script>
+</body>
+</html>

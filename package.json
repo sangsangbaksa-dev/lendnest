@@ -1,0 +1,10 @@
+{
+  "name": "workbook-attendance",
+  "version": "1.0.0",
+  "private": true,
+  "description": "근무시간 기록과 주휴수당·연장근로 가산·최저임금 점검 (정적 웹앱)",
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/logic.test.js"
+  }
+}

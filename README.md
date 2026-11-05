@@ -1,11 +1,68 @@
-# Lendnest
+# 근무장부
 
-A ledger for everything you lend and borrow, items and money, in one place. Static site, no server, data in localStorage. 5 languages (en, ko, ja, zh, es). Paid: one payment, unlocked per device with a licence key (`functions/api/license.js`, Lemon Squeezy; set `LEMONSQUEEZY_PRODUCT_ID` on the Pages project, and `checkoutUrl` in `config.js` once the product exists).
+소상공인 사장님을 위한 **근무시간 기록과 급여 점검 도구**입니다. 직원·알바의 근무시간을 기록하면 주 단위로 주휴수당과 연장근로 가산을 계산하고, 최저임금 미달 같은 법정 기준 위반 가능성을 알려줍니다.
 
-- `index.html` landing (copy lives in `app/i18n.js` under `LAND`, switched client-side), `app/` the app, `privacy.html` / `terms.html` (generated).
-- What it does: lent and borrowed lists with overdue / due-soon status, money with partial repayments and a progress bar, return-date extensions, write-off and reopen with undo, item returns with a condition note, per-person on-time score and a "loan check" before you lend again, reminder text writer (gentle / firm / final, 5 languages, copy or share), handover note, optional photo (downscaled, stored locally), search, status / type / person filters on the lists, a printable statement per person (Print, from the person's card), Insights (totals per currency, 6-month lent vs returned chart, who has the most), backup / merge-restore JSON, CSV export (with a condition column), calendar `.ics` export with a day-before alert, dark mode, offline PWA.
-- Logic is in `app/core.js` (pure, no DOM, unit-tested). All DOM is built with `textContent`, never `innerHTML`; imports are sanitised (`sanitize`) and the CSP forbids inline script.
-- Tests: `node --test test/*.test.js` (unit), `NODE_PATH=$(npm root -g) node test/e2e.js [screenshot-dir]` (Playwright).
-- Build: `node scripts/build.js --dist` regenerates legal pages / sitemap / robots from `config.js` and copies the public files to `dist/` (Cloudflare Pages output). `scripts/make-images.js` re-renders the PNG icons from `icon.svg`.
-- Features added: tags with a filter, a reminder log (every copied or shared reminder shows on the card and in history), a licence gate with a paywall, and the review fixes (form conflict keeps the form open, repayment dates outside the loan are refused, focus returns to the opener).
-- Hosting: Cloudflare Pages project `lendnest`, deployed by `../.github/workflows/deploy-cloudflare.yml`. Live at `https://lendnest-90u.pages.dev`; if the URL changes, update `siteUrl` in `config.js`.
+## 기능
+
+- 직원 등록 (이름, 시급), 시급 수정, 직원 삭제 시 근무 기록도 함께 삭제 (확인 창 포함)
+- 근무 기록 입력: 날짜, 출근·퇴근, 휴게 시간(분), 메모. 자정을 넘는 근무 지원
+- 입력 중 실근무 시간 미리보기
+- 주간 집계: 주(월~일) 단위로 근무시간, 연장근로, 주휴시간, 합계 표시
+- 월별 직원 집계: 근무시간, 기본급, 연장 가산, 주휴수당, 합계
+- 점검 알림
+  - 설정한 최저임금보다 시급이 낮은 직원 (오류)
+  - 주 40시간 초과로 연장 가산이 붙는 주 (안내)
+  - 주 15시간 미만이라 주휴수당 대상이 아닌 주 (안내)
+- CSV 내보내기 (근무 기록, 월별 집계). BOM 포함, 수식 주입 방지
+
+## 계산 기준 (추정)
+
+| 항목 | 계산 |
+| --- | --- |
+| 근무시간 | (퇴근 − 출근, 자정 넘김 보정) − 휴게 시간 |
+| 기본급 | 근무시간 × 시급 |
+| 연장근로 가산 | 주 40시간 초과분 × 시급 × 50% |
+| 주휴수당 | 주 15시간 이상이면 (주 근무시간 ÷ 40 × 8, 최대 8시간) × 시급 |
+
+## 반영하지 않는 것
+
+이 앱의 계산은 **추정치**입니다. 아래 항목은 반영하지 않으므로 실제 지급 전에 확인하세요.
+
+- 주휴수당의 **개근 조건** (주 소정 근로일을 모두 출근해야 발생)
+- 소정근로시간 (계약서 기준 시간). 실제 근무시간으로 대신 계산합니다.
+- 야간(22시~06시) 가산, 휴일 근로 가산
+- 세금, 4대보험 등 공제
+- 주가 월을 넘는 경우 주 시작일(월요일)이 속한 달에 귀속됩니다.
+- 최저임금은 자동으로 갱신되지 않습니다. 고용노동부 고시 금액을 직접 입력하세요.
+
+## 실행
+
+빌드 과정이 없습니다. 정적 호스팅에 올리거나, 로컬에서는 간단한 서버로 여세요.
+
+```bash
+python3 -m http.server 8080
+# http://localhost:8080 접속
+```
+
+ES 모듈을 쓰므로 `index.html`을 파일 경로(`file://`)로 직접 열면 브라우저가 스크립트를 막습니다.
+
+데이터는 이 브라우저의 `localStorage`(키 `workbook-v1`)에만 저장되며 서버로 전송되지 않습니다.
+
+## 테스트
+
+Node 18 이상에서 실행합니다.
+
+```bash
+npm test
+```
+
+`logic.js`의 시간 계산, 주휴수당·연장 가산 계산, 집계, 점검 알림, CSV를 `node:test`로 검증합니다.
+
+## 파일 구조
+
+| 파일 | 역할 |
+| --- | --- |
+| `logic.js` | 순수 계산 로직 (DOM 없음) |
+| `app.js` | 화면 렌더링과 이벤트 처리 |
+| `index.html`, `styles.css` | 화면과 스타일 (라이트/다크 모드 지원) |
+| `tests/logic.test.js` | 계산 로직 테스트 |
