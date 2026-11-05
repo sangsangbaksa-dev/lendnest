@@ -1,20 +1,21 @@
 /* 근무장부 styles. Colours are tokens on :root; dark values repeat under both dark selectors. */
 :root {
-  --bg: #f5f6f8;
+  --bg: #F8FAFC;
   --panel: #ffffff;
   --sunken: #f9fafb;
-  --ink: #1c2026;
+  --ink: #0A1628;
   --muted: #5b6372;
-  --line: #dfe3e9;
+  --line: #dfe5ec;
   --line-strong: #bcc3cd;
-  --accent: #0f766e;
-  --accent-hover: #0c5f58;
+  --accent: #0B6E4F;
+  --accent-hover: #064D36;
   --accent-ink: #ffffff;
   --warn: #9a4a06;
   --danger: #b42318;
   --info: #1d4ed8;
-  --focus: #0f766e;
-  --radius: 14px;
+  --focus: #0B6E4F;
+  --radius: 18px;
+  --chip: #e7f3ee;
   --radius-sm: 10px;
   --tap: 44px;
   --shadow: 0 1px 2px rgba(28, 32, 38, 0.04), 0 4px 14px rgba(28, 32, 38, 0.04);
@@ -23,40 +24,42 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0e1113;
-    --panel: #171b1e;
-    --sunken: #0e1113;
-    --ink: #e6eaee;
-    --muted: #a3acb9;
-    --line: #2b3237;
-    --line-strong: #414a51;
-    --accent: #2dd4bf;
-    --accent-hover: #5ee3d1;
-    --accent-ink: #052624;
+    --bg: #0b1220;
+    --panel: #111b2b;
+    --sunken: #0b1220;
+    --ink: #e6edf5;
+    --muted: #9aa8bb;
+    --line: #223047;
+    --line-strong: #33445e;
+    --accent: #5ad3a4;
+    --accent-hover: #7fe0b8;
+    --accent-ink: #06231a;
     --warn: #fbbf24;
     --danger: #f97066;
     --info: #93c5fd;
-    --focus: #5ee3d1;
+    --focus: #7fe0b8;
+  --chip: #133228;
     --shadow: none;
     color-scheme: dark;
   }
 }
 
 :root[data-theme="dark"] {
-  --bg: #0e1113;
-  --panel: #171b1e;
-  --sunken: #0e1113;
-  --ink: #e6eaee;
-  --muted: #a3acb9;
-  --line: #2b3237;
-  --line-strong: #414a51;
-  --accent: #2dd4bf;
-  --accent-hover: #5ee3d1;
-  --accent-ink: #052624;
+  --bg: #0b1220;
+  --panel: #111b2b;
+  --sunken: #0b1220;
+  --ink: #e6edf5;
+  --muted: #9aa8bb;
+  --line: #223047;
+  --line-strong: #33445e;
+  --accent: #5ad3a4;
+  --accent-hover: #7fe0b8;
+  --accent-ink: #06231a;
   --warn: #fbbf24;
   --danger: #f97066;
   --info: #93c5fd;
-  --focus: #5ee3d1;
+  --focus: #7fe0b8;
+  --chip: #133228;
   --shadow: none;
   color-scheme: dark;
 }
@@ -270,3 +273,34 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
   .panel { padding: 16px; }
   main { padding: 12px; }
 }
+
+/* Site pattern pass: sticky top bar with a primary CTA, hero with one headline and sub-line, serif display headings,
+   large rounded cards, site footer. Typography is local only (serif Korean system fonts, Georgia), body stays sans. */
+:root { --display: Georgia, "Times New Roman", "Nanum Myeongjo", "Batang", serif; }
+.site-bar { position: sticky; top: 0; z-index: 5; background: var(--panel); border-bottom: 1px solid var(--line); }
+.bar-in { max-width: 1100px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.brand { display: inline-flex; align-items: center; gap: 10px; min-height: var(--tap); color: var(--ink); text-decoration: none; font-family: var(--display); font-weight: 700; font-size: 18px; letter-spacing: -0.01em; }
+.mark { width: 30px; height: 30px; flex: none; display: block; }
+.mark .m-bg { fill: var(--accent); }
+.mark .m-bar { fill: var(--accent-ink); }
+.bar-cta { display: inline-flex; align-items: center; justify-content: center; min-height: var(--tap); padding: 0 18px; border-radius: 12px; background: var(--accent); color: var(--accent-ink); font-weight: 700; font-size: 15px; text-decoration: none; transition: transform .15s ease, opacity .15s ease; }
+.bar-cta:hover { opacity: .92; }
+.bar-cta:active { transform: translateY(1px); }
+.hero { max-width: 1100px; margin: 0 auto; padding: 48px 16px 8px; display: flex; justify-content: space-between; align-items: flex-end; gap: 16px 24px; flex-wrap: wrap; }
+.hero-t { min-width: 0; max-width: 680px; }
+.eyebrow { display: inline-block; margin: 0 0 12px; padding: 4px 12px; border-radius: 999px; background: var(--chip, #e7f3ee); color: var(--accent); font-size: 13px; font-weight: 600; }
+.hero h1 { font-family: var(--display); font-size: clamp(26px, 5vw, 38px); line-height: 1.2; font-weight: 700; letter-spacing: -0.01em; }
+.hero .sub { font-size: 16px; margin-top: 12px; }
+.month-pick { min-width: 160px; }
+.month-pick select { min-width: 160px; }
+main { padding-top: 24px; gap: 20px; }
+.panel { border-radius: 1.25rem; padding: 22px; }
+.card { border-radius: 1.25rem; }
+h2 { font-family: var(--display); font-size: 19px; font-weight: 700; }
+.site-foot { max-width: 1100px; margin: 0 auto; padding: 28px 16px 40px; border-top: 1px solid var(--line); display: grid; gap: 14px 24px; color: var(--muted); font-size: 14px; }
+@media (min-width: 720px) { .site-foot { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .site-foot .foot-copy { grid-column: 1 / -1; } }
+.foot-brand { display: grid; gap: 6px; }
+.foot-brand .brand { font-size: 16px; min-height: 0; }
+.foot-desc, .foot-disc, .foot-copy { margin: 0; }
+@media (max-width: 420px) { .hero { padding-top: 32px; } .bar-cta { padding: 0 14px; font-size: 14px; } }
+@media (prefers-reduced-motion: reduce) { .bar-cta { transition: none; } .bar-cta:active { transform: none; } }

@@ -5,16 +5,29 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>근무장부</title>
 <meta name="description" content="직원·알바 근무시간을 기록하고 주휴수당, 연장근로 가산, 최저임금 미달을 점검합니다.">
+<meta name="theme-color" content="#0B6E4F">
+<meta property="og:title" content="근무장부">
+<meta property="og:description" content="직원·알바 근무시간을 기록하고 주휴수당, 연장근로 가산, 최저임금 미달을 점검합니다.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230B6E4F'/%3E%3Crect x='14' y='18' width='36' height='6' rx='3' fill='%23fff'/%3E%3Crect x='14' y='30' width='22' height='6' rx='3' fill='%23fff' fill-opacity='.55'/%3E%3Crect x='14' y='42' width='30' height='6' rx='3' fill='%23fff' fill-opacity='.85'/%3E%3C/svg%3E" type="image/svg+xml">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<header class="top">
-  <div>
-    <h1>근무장부</h1>
+<header class="site-bar">
+  <div class="bar-in">
+    <a class="brand" href="#top"><svg class="mark" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><rect class="m-bg" width="64" height="64" rx="14"/><rect class="m-bar" x="14" y="18" width="36" height="6" rx="3"/><rect class="m-bar" x="14" y="30" width="22" height="6" rx="3" opacity="0.55"/><rect class="m-bar" x="14" y="42" width="30" height="6" rx="3" opacity="0.85"/></svg><span>근무장부</span></a>
+    <a class="bar-cta" href="#shift-form">근무 기록 추가</a>
+  </div>
+</header>
+
+<section class="hero" id="top">
+  <div class="hero-t">
+    <p class="eyebrow">소상공인 사장님을 위한 근무시간·급여 점검</p>
+    <h1>근무시간 기록부터 주휴수당까지, 한눈에 점검하세요.</h1>
     <p class="sub">근무시간을 기록하면 주휴수당과 연장근로 가산을 주 단위로 계산하고, 법정 기준 위반 가능성을 알려줍니다.</p>
   </div>
-  <label class="inline">대상 월 <select id="month-sel"></select></label>
-</header>
+  <label class="inline month-pick">대상 월 <select id="month-sel"></select></label>
+</section>
 
 <main>
   <section class="cards" aria-label="월간 요약">
@@ -132,8 +145,17 @@
     <p id="shifts-empty" class="hint" hidden>이 달에는 기록이 없습니다.</p>
   </section>
 
-  <p class="foot">주휴수당·연장 가산은 추정치입니다. 개근 여부, 소정근로시간, 야간·휴일 가산, 세금과 공제는 반영하지 않습니다. 데이터는 이 브라우저(localStorage)에만 저장됩니다.</p>
 </main>
+
+<footer class="site-foot">
+  <div class="foot-brand">
+    <a class="brand" href="#top"><svg class="mark" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><rect class="m-bg" width="64" height="64" rx="14"/><rect class="m-bar" x="14" y="18" width="36" height="6" rx="3"/><rect class="m-bar" x="14" y="30" width="22" height="6" rx="3" opacity="0.55"/><rect class="m-bar" x="14" y="42" width="30" height="6" rx="3" opacity="0.85"/></svg><span>근무장부</span></a>
+    <p class="foot-desc">소상공인을 위한 근무시간 기록과 급여 점검 도구입니다.</p>
+    <p class="foot-desc">데이터는 이 브라우저(localStorage)에만 저장되며 서버로 전송되지 않습니다.</p>
+  </div>
+  <p class="foot-disc">주휴수당·연장 가산은 추정치입니다. 개근 여부, 소정근로시간, 야간·휴일 가산, 세금과 공제는 반영하지 않습니다.</p>
+  <p class="foot-copy">&copy; 2026 근무장부</p>
+</footer>
 
 <div id="toast" role="status" aria-live="polite" hidden></div>
 <script type="module" src="app.js"></script>
