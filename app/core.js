@@ -225,6 +225,9 @@
     return list.filter(function (e) {
       if ((f.kind === 'item' || f.kind === 'money') && e.kind !== f.kind) return false;
       if (f.personId && e.personId !== f.personId) return false;
+      if (f.due === 'none' && e.due) return false;
+      if (f.due === 'today' && e.due !== t) return false;
+      if (f.due === 'week' && (!e.due || e.due < t || e.due > addDays(t, 7))) return false;
       if (f.status === 'closed') return isClosed(e);
       if (f.status === 'active') return !isClosed(e);
       if (f.status === 'overdue' || f.status === 'soon') return !isClosed(e) && status(e, t) === f.status;

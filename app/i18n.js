@@ -369,6 +369,8 @@
     es: { fSort: 'Orden', fSortDue: 'Por vencimiento', fSortName: 'Por nombre', fSortRecent: 'Más recientes', stmtCsv: 'Extracto (CSV)' }
   };
   Object.keys(EXTRA5).forEach(function (l) { Object.assign(L[l], EXTRA5[l]); });
+  var LIST_TOOLS = {"en": {"fDue": "Due range", "fWeek": "Today to 7 days ahead", "resultCount": "{n} of {total} entries match", "resetFilters": "Reset filters", "exportResults": "Export matches (CSV)"}, "ko": {"fDue": "기한 범위", "fWeek": "오늘부터 7일 이내", "resultCount": "{total}건 중 {n}건 일치", "resetFilters": "필터 초기화", "exportResults": "검색 결과 내보내기 (CSV)"}, "ja": {"fDue": "期限の範囲", "fWeek": "今日から7日以内", "resultCount": "{total}件中{n}件一致", "resetFilters": "絞り込みをリセット", "exportResults": "検索結果を出力 (CSV)"}, "zh": {"fDue": "到期范围", "fWeek": "今天起7天内", "resultCount": "{total}条中匹配{n}条", "resetFilters": "重置筛选", "exportResults": "导出匹配结果 (CSV)"}, "es": {"fDue": "Plazo", "fWeek": "Hoy y próximos 7 días", "resultCount": "{n} de {total} registros coinciden", "resetFilters": "Restablecer filtros", "exportResults": "Exportar resultados (CSV)"}};
+  Object.keys(LIST_TOOLS).forEach(function (l) { Object.assign(L[l], LIST_TOOLS[l]); });
   var api = { L: L, LAND: LAND, langs: ['en', 'ko', 'ja', 'zh', 'es'],
     detect: function (nav) { var c = ((nav && (nav.language || (nav.languages || [])[0])) || 'en').toLowerCase().slice(0, 2); return L[c] ? c : 'en'; } };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.LNI = api;

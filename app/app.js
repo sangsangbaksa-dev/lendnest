@@ -344,7 +344,7 @@
   }
   var tagFilter = '';
   /* status, type and person filters for the Lent and Borrowed lists (reset when the tab changes) */
-  var flt = { status: 'all', kind: 'all', person: '', sort: 'due' };
+  var flt = { status: 'all', kind: 'all', person: '', sort: 'due', due: 'all' };
   function filterBar(dir) {
     var ids = Object.create(null); st.entries.forEach(function (e) { if (e.dir === dir) ids[e.personId] = true; });
     var people = st.people.filter(function (p) { return ids[p.id]; }).sort(function (a, b) { return a.name.localeCompare(b.name); });
@@ -354,6 +354,7 @@
     }
     return h('div', { class: 'filters' },
       pick('f-status', t('fStatus'), [['all', t('fAny')], ['active', t('fActive')], ['overdue', t('overdueN')], ['soon', t('soonN')], ['closed', t('fClosed')]], flt.status, function (v) { flt.status = v; }),
+      pick('f-due', t('fDue'), [['all', t('fAny')], ['today', t('dueToday')], ['week', t('fWeek')], ['none', t('noDue')]], flt.due, function (v) { flt.due = v; }),
       pick('f-kind', t('fKind'), [['all', t('fAny')], ['item', t('kindItem')], ['money', t('kindMoney')]], flt.kind, function (v) { flt.kind = v; }),
       pick('f-sort', t('fSort'), [['due', t('fSortDue')], ['name', t('fSortName')], ['recent', t('fSortRecent')]], flt.sort, function (v) { flt.sort = v; }),
       pick('f-who', t('fWho'), [['', t('fAnyone')]].concat(people.map(function (p) { return [p.id, p.name]; })), flt.person, function (v) { flt.person = v; }));
@@ -407,13 +408,19 @@
     /* a person or tag filter that no longer matches anything is cleared before the list is built, not after */
     if (flt.person && !st.entries.some(function (e) { return e.dir === dir && e.personId === flt.person; })) flt.person = '';
     if (tagFilter && !C.allTags({ entries: st.entries.filter(function (e) { return e.dir === dir; }) }).some(function (x) { return x.tag.toLowerCase() === tagFilter.toLowerCase(); })) tagFilter = '';
-    var list = C.filterEntries(st.entries.filter(function (e) { return e.dir === dir && C.match(e, C.findPerson(st, e.personId), q) && (!tagFilter || C.hasTag(e, tagFilter)); }), { status: flt.status, kind: flt.kind, personId: flt.person });
+    var list = C.filterEntries(st.entries.filter(function (e) { return e.dir === dir && C.match(e, C.findPerson(st, e.personId), q) && (!tagFilter || C.hasTag(e, tagFilter)); }), { status: flt.status, kind: flt.kind, personId: flt.person, due: flt.due });
     var open = C.sortBy(list.filter(function (e) { return !C.isClosed(e); }), flt.sort), closed = list.filter(C.isClosed).sort(function (a, b) { return (b.returnedAt || '') < (a.returnedAt || '') ? -1 : (b.returnedAt || '') > (a.returnedAt || '') ? 1 : 0; });
     var out = h('div'), sm = C.summary(st);
     if (!st.entries.some(function (e) { return e.dir === dir; })) return h('div', { class: 'empty' }, emptyArt(), h('h2', { text: t(dir === 'out' ? 'emptyOutH' : 'emptyInH') }), h('p', { text: t(dir === 'out' ? 'emptyOutB' : 'emptyInB') }), h('button', { class: 'pri', type: 'button', text: t('add'), onclick: function () { entryForm(null); } }));
     var allOpen = st.entries.filter(function (e) { return e.dir === dir && !C.isClosed(e); }), bad = allOpen.filter(function (e) { return C.status(e) === 'overdue'; }).length;
     var tc = tagChips(dir); if (tc) out.appendChild(tc);
     out.appendChild(filterBar(dir));
+    var resultCount = st.entries.filter(function (e) { return e.dir === dir; }).length;
+    out.appendChild(h('div', { class: 'result-tools' },
+      h('p', { class: 'sub', role: 'status', text: t('resultCount', { n: list.length, total: resultCount }) }),
+      h('div', { class: 'row' },
+        h('button', { type: 'button', class: 'sm', id: 'reset-filters', text: t('resetFilters'), disabled: !q && !tagFilter && flt.status === 'all' && flt.kind === 'all' && !flt.person && flt.sort === 'due' && flt.due === 'all', onclick: function () { q = ''; tagFilter = ''; flt = { status: 'all', kind: 'all', person: '', sort: 'due', due: 'all' }; render(); document.querySelector('#f-status').focus(); } }),
+        h('button', { type: 'button', class: 'sm', id: 'export-results', text: t('exportResults'), disabled: !list.length, onclick: function () { download('lendnest-results-' + C.today() + '.csv', C.toCSV({ entries: list, people: st.people }), 'text/csv'); } }))));
     if (bad) out.appendChild(h('div', { class: 'banner bad', text: t('attn', { n: bad }) })); else if (allOpen.length && !allOpen.some(function (e) { return C.status(e) === 'soon'; })) out.appendChild(h('div', { class: 'banner good', text: t('allGood') }));
     var money = moneyMap(dir === 'out' ? sm.owedToMe : sm.iOwe);
     if (money) out.appendChild(h('div', { class: 'stats' }, h('div', { class: 'stat' }, h('b', { text: money }), h('span', { text: dir === 'out' ? t('owedToMe') : t('iOwe') }))));
@@ -605,7 +612,7 @@
     root.appendChild(h('main', { id: 'main', class: 'wrap', tabindex: '-1' }, saveFailed ? h('div', { class: 'banner bad', role: 'alert', text: t('storageErr') }) : null, corrupt ? h('div', { class: 'banner bad', role: 'alert' }, t(copyKept ? 'corrupt' : 'corruptFile') + ' ', h('button', { type: 'button', class: 'link', id: 'dl-corrupt', text: t('downloadRaw'), onclick: function () { var txt = corruptRaw; try { if (!txt) { var k = Object.keys(localStorage).filter(function (x) { return x.indexOf(KEY + '.corrupt') === 0; })[0]; txt = k ? localStorage.getItem(k) : ''; } } catch (e) {} if (!txt) return; download('lendnest-unreadable.txt', txt, 'text/plain'); rawSafe = true; saveFailed = false; render(); } })) : null, search, view));
     if (tab !== 'set') root.appendChild(h('button', { type: 'button', class: 'pri fab', id: 'fab', text: '+ ' + t('add'), onclick: function () { entryForm(null); } }));
     root.appendChild(h('nav', { class: 'tabs', 'aria-label': t('app') }, h('div', { class: 'wrap' }, TABS.map(function (x) {
-      return h('button', { type: 'button', 'data-tab': x[0], 'aria-current': tab === x[0] ? 'page' : null, onclick: function () { if (tab !== x[0]) { tab = x[0]; q = ''; tagFilter = ''; flt = { status: 'all', kind: 'all', person: '', sort: 'due' }; render(); window.scrollTo(0, 0); } } }, svgIcon(ICON[x[0]]), h('span', { text: t(x[1]) }));
+      return h('button', { type: 'button', 'data-tab': x[0], 'aria-current': tab === x[0] ? 'page' : null, onclick: function () { if (tab !== x[0]) { tab = x[0]; q = ''; tagFilter = ''; flt = { status: 'all', kind: 'all', person: '', sort: 'due', due: 'all' }; render(); window.scrollTo(0, 0); } } }, svgIcon(ICON[x[0]]), h('span', { text: t(x[1]) }));
     }))));
     window.scrollTo(0, keepScroll);
     if (sel && sel !== '#q') { var nf = root.querySelector(sel); if (!nf && ae.getAttribute('data-act')) nf = root.querySelector('.head[data-id="' + ae.getAttribute('data-id') + '"]'); if (nf) nf.focus({ preventScroll: true }); }
