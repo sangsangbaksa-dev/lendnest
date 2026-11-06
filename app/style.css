@@ -121,3 +121,8 @@ nav.tabs button[aria-current=page]::before{content:"";position:absolute;top:0;wi
 dialog .in{padding:22px}
 @media(hover:hover){.card .head:hover .title{text-decoration:underline;text-decoration-color:var(--pri);text-underline-offset:3px}button:not(:disabled):hover{border-color:var(--pri)}}
 @media(max-width:420px){.wrap{padding-left:14px;padding-right:14px}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.card{padding:14px}nav.tabs .wrap{padding:0 4px}}
+
+/* A compact results bar keeps controls beside their current scope. */
+.result-tools{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 16px;border:1px solid var(--line);border-radius:14px;margin:12px 0;background:var(--card)}
+.result-tools p{margin:0}.result-tools .row{flex-wrap:wrap;gap:8px}
+@media(max-width:540px){.result-tools{align-items:stretch}.result-tools .row{width:100%}.result-tools button{flex:1;white-space:normal}}

@@ -180,3 +180,25 @@ test('installment plan: due follows the next unpaid monthly installment', () => 
   s.entries.push(e); const r = C.sanitize(JSON.parse(JSON.stringify(s))); assert.equal(r.entries[0].plan.n, 3); assert.equal(C.makeEntry({ kind: 'item', title: 'x', personId: p.id, plan: { n: 3 } }).plan, null); assert.equal(C.makeEntry({ kind: 'money', amount: 5, title: 'x', personId: p.id, plan: { n: 1 } }).plan, null);
   const d = C.makeEntry({ title: 'soon', personId: p.id, date: '2026-10-01', due: '2026-10-05' }); s.entries.push(d); assert.equal(C.upcoming(s, 1, '2026-10-02')[0].title, 'soon');
 });
+
+
+test('due range filters compose with status, person and kind without mutating data', () => {
+  const { s, p } = mk();
+  s.entries = [
+    C.makeEntry({title:'Today',personId:p.id,due:'2026-11-06'}),
+    C.makeEntry({title:'Boundary',personId:p.id,due:'2026-11-13'}),
+    C.makeEntry({title:'Later',personId:p.id,due:'2026-11-14'}),
+    C.makeEntry({title:'Late',personId:p.id,due:'2026-11-05'}),
+    C.makeEntry({title:'None',personId:p.id})
+  ];
+  const before=JSON.stringify(s);
+  assert.deepEqual(C.filterEntries(s.entries,{due:'week'},'2026-11-06').map(e=>e.title),['Today','Boundary']);
+  assert.deepEqual(C.filterEntries(s.entries,{due:'today'},'2026-11-06').map(e=>e.title),['Today']);
+  assert.deepEqual(C.filterEntries(s.entries,{due:'none'},'2026-11-06').map(e=>e.title),['None']);
+  assert.equal(C.filterEntries(s.entries,{due:'week',personId:'other'},'2026-11-06').length,0);
+  assert.equal(C.filterEntries(s.entries,{due:'week',status:'overdue'},'2026-11-06').length,0);
+  const results=C.filterEntries(s.entries,{due:'today'},'2026-11-06');
+  const csv=C.toCSV({entries:results,people:s.people});
+  assert.ok(csv.includes('Today')); assert.ok(!csv.includes('Boundary'));
+  assert.equal(JSON.stringify(s),before);
+});
