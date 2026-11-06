@@ -215,8 +215,8 @@
     });
   }
   function match(e, p, q) {
-    q = q.trim().toLowerCase(); if (!q) return true;
-    return (e.title + ' ' + e.note + ' ' + (p ? p.name : '') + ' ' + (e.tags || []).join(' ')).toLowerCase().indexOf(q) >= 0;
+    q = String(q == null ? '' : q).normalize('NFC').trim().toLowerCase(); if (!q) return true;
+    return (e.title + ' ' + e.note + ' ' + (p ? p.name : '') + ' ' + (e.tags || []).join(' ')).normalize('NFC').toLowerCase().indexOf(q) >= 0;
   }
 
   /* list filter: status (all | active | overdue | soon | closed), kind (all | item | money), personId ('' = everyone) */
