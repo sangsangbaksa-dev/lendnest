@@ -557,7 +557,7 @@
     var tone = h('select', { id: 's-tone', onchange: function () { st.settings.tone = this.value; save(); } }, [['gentle', 'tGentle'], ['firm', 'tFirm'], ['final', 'tFinal']].map(function (x) { return h('option', { value: x[0], text: t(x[1]), selected: st.settings.tone === x[0] }); }));
     var file = h('input', { type: 'file', accept: 'application/json,.json', id: 's-file', hidden: true });
     file.addEventListener('change', function () {
-      var f = file.files[0]; if (!f) return; var r = new FileReader();
+      var f = file.files[0]; file.value = ''; if (!f) return; if (f.size > 20 * 1024 * 1024 && !confirm(t('fileTooLarge'))) return; var r = new FileReader();
       r.onload = function () { try { var raw = JSON.parse(r.result), imp = C.sanitize(raw); if (!imp) throw 0; var skipped = raw.entries.length - imp.entries.length, m = C.merge(st, imp); st = m.state; save(); render(); toast(t('restored', { n: m.added }) + (skipped > 0 ? ' ' + t('skipped', { n: skipped }) : '')); } catch (e) { toast(t('badFile')); } };
       r.onerror = function () { toast(t('badFile')); }; r.readAsText(f); file.value = '';
     });

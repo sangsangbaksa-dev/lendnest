@@ -1,6 +1,6 @@
 # Lendnest
 
-A ledger for everything you lend and borrow, items and money, in one place. Static site, no server, data in localStorage. 5 languages (en, ko, ja, zh, es). Paid: one payment, unlocked per device with a licence key (`functions/api/license.js`, Lemon Squeezy; set `LEMONSQUEEZY_PRODUCT_ID` on the Pages project, and `checkoutUrl` in `config.js` once the product exists).
+A ledger for everything you lend and borrow, items and money, in one place. App data is stored in browser localStorage; the optional licence check uses a serverless endpoint and an external licensing service. 5 languages (en, ko, ja, zh, es). Paid: one payment, unlocked per device with a licence key (`functions/api/license.js`, Lemon Squeezy; set `LEMONSQUEEZY_PRODUCT_ID` on the Pages project, and `checkoutUrl` in `config.js` once the product exists).
 
 - `index.html` landing (copy lives in `app/i18n.js` under `LAND`, switched client-side), `app/` the app, `privacy.html` / `terms.html` (generated).
 - What it does: lent and borrowed lists with overdue / due-soon status, money with partial repayments and a progress bar, return-date extensions, write-off and reopen with undo, item returns with a condition note, per-person on-time score and a "loan check" before you lend again, reminder text writer (gentle / firm / final, 5 languages, copy or share), handover note, optional photo (downscaled, stored locally), search, status / type / person filters on the lists, a printable statement per person (Print, from the person's card), Insights (totals per currency, 6-month lent vs returned chart, who has the most), backup / merge-restore JSON, CSV export (with a condition column), calendar `.ics` export with a day-before alert, dark mode, offline PWA.
@@ -13,3 +13,5 @@ A ledger for everything you lend and borrow, items and money, in one place. Stat
 ## 배포 전 검증
 
 설치·빌드·브라우저 검사·Cloudflare 배포 파일 구성은 [PREDEPLOY.md](PREDEPLOY.md)를 참고하세요. `codex/predeploy-2026-11-06` 브랜치의 검증 워크플로에는 배포 단계가 없습니다.
+
+When an import exceeds 20 MiB, the app asks before reading it because large files can slow the browser. Larger backup files remain importable.

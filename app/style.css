@@ -102,3 +102,22 @@ button:active{transform:scale(.98)}
   #print-area table{width:100%;border-collapse:collapse;margin-top:12pt}
   #print-area th,#print-area td{border-bottom:1px solid #999;padding:6pt 4pt;text-align:left;vertical-align:top}
 }
+
+
+/* Give the lending dashboard a calm, layered app shell. */
+header.top{box-shadow:0 4px 18px color-mix(in srgb,var(--ink) 7%,transparent)}
+.brand{letter-spacing:-.025em}.brand svg{filter:drop-shadow(0 2px 3px color-mix(in srgb,var(--pri) 25%,transparent))}
+.search input{border-radius:14px;box-shadow:var(--shadow);padding-left:14px}
+.stats{gap:10px}.stat{border:1px solid var(--line);padding:14px;border-radius:16px}
+.stat b{letter-spacing:-.025em}.stat span{display:block;margin-top:5px;line-height:1.3}
+.card{border-color:var(--line);padding:16px;border-radius:18px}
+.card .title{font-size:1.02rem;line-height:1.3}.card .sub{line-height:1.45;margin-top:3px}
+.avatar{width:46px;height:46px;border-radius:15px}
+.card .bar{height:7px;margin-top:14px}
+nav.tabs{box-shadow:0 -6px 24px color-mix(in srgb,var(--ink) 7%,transparent)}
+nav.tabs button{position:relative;gap:3px}
+nav.tabs button[aria-current=page]::before{content:"";position:absolute;top:0;width:26px;height:3px;border-radius:0 0 4px 4px;background:var(--pri)}
+.fab{box-shadow:0 8px 24px color-mix(in srgb,var(--pri) 35%,transparent)}
+dialog .in{padding:22px}
+@media(hover:hover){.card .head:hover .title{text-decoration:underline;text-decoration-color:var(--pri);text-underline-offset:3px}button:not(:disabled):hover{border-color:var(--pri)}}
+@media(max-width:420px){.wrap{padding-left:14px;padding-right:14px}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.card{padding:14px}nav.tabs .wrap{padding:0 4px}}
