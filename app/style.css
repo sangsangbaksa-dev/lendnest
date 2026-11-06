@@ -126,3 +126,10 @@ dialog .in{padding:22px}
 .result-tools{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 16px;border:1px solid var(--line);border-radius:14px;margin:12px 0;background:var(--card)}
 .result-tools p{margin:0}.result-tools .row{flex-wrap:wrap;gap:8px}
 @media(max-width:540px){.result-tools{align-items:stretch}.result-tools .row{width:100%}.result-tools button{flex:1;white-space:normal}}
+
+/* Group the list scope and its actions into one readable review surface. */
+.result-tools{border-inline-start:4px solid var(--pri);padding:14px 16px;box-shadow:var(--shadow)}
+.result-tools [role=status]{font-variant-numeric:tabular-nums;font-weight:600;color:var(--ink);line-height:1.5}
+.result-tools .row{gap:10px}.result-tools button{min-height:44px}
+.filters{row-gap:12px}
+@media(max-width:420px){.result-tools{padding:12px}.result-tools .row{gap:8px}.result-tools button{padding:9px 10px}}

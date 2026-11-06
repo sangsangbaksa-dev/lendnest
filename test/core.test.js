@@ -202,3 +202,16 @@ test('due range filters compose with status, person and kind without mutating da
   assert.ok(csv.includes('Today')); assert.ok(!csv.includes('Boundary'));
   assert.equal(JSON.stringify(s),before);
 });
+
+
+test('search matches visually identical decomposed Korean without modifying stored text', () => {
+  const title = '한글 물건'.normalize('NFD');
+  const e = { title, note: '메모', tags: ['기록'.normalize('NFD')] };
+  const p = { name: '홍길동'.normalize('NFD') };
+  assert.ok(C.match(e, p, '한글'));
+  assert.ok(C.match(e, p, '메모'.normalize('NFD')));
+  assert.ok(C.match(e, p, '홍길동'));
+  assert.ok(C.match(e, p, '기록'));
+  assert.equal(e.title, title);
+  assert.ok(!C.match(e, p, '다른물건'));
+});
