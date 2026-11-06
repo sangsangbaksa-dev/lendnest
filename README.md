@@ -9,3 +9,7 @@ A ledger for everything you lend and borrow, items and money, in one place. Stat
 - Build: `node scripts/build.js --dist` regenerates legal pages / sitemap / robots from `config.js` and copies the public files to `dist/` (Cloudflare Pages output). `scripts/make-images.js` re-renders the PNG icons from `icon.svg`.
 - Features added: tags with a filter, a reminder log (every copied or shared reminder shows on the card and in history), a licence gate with a paywall, and the review fixes (form conflict keeps the form open, repayment dates outside the loan are refused, focus returns to the opener).
 - Hosting: Cloudflare Pages project `lendnest`, deployed by `../.github/workflows/deploy-cloudflare.yml`. Live at `https://lendnest-90u.pages.dev`; if the URL changes, update `siteUrl` in `config.js`.
+
+## 배포 전 검증
+
+설치·빌드·브라우저 검사·Cloudflare 배포 파일 구성은 [PREDEPLOY.md](PREDEPLOY.md)를 참고하세요. `codex/predeploy-2026-11-06` 브랜치의 검증 워크플로에는 배포 단계가 없습니다.
