@@ -215,3 +215,24 @@ test('search matches visually identical decomposed Korean without modifying stor
   assert.equal(e.title, title);
   assert.ok(!C.match(e, p, '다른물건'));
 });
+
+
+test('numeric values do not coerce booleans or structured backup data', () => {
+  const { s, p } = mk();
+  const base = { id: 'loan1', kind: 'money', amount: 100, title: 'Loan', personId: p.id, date: '2026-10-01' };
+  for (const amount of [true, false, [100], { value: 100 }]) {
+    assert.equal(C.makeEntry({ ...base, amount }).amount, 0);
+    assert.equal(C.validEntry({ ...base, amount }), 'amount');
+    const e = C.makeEntry(base);
+    assert.equal(C.repay(e, amount, '2026-10-02'), false);
+    assert.equal(e.repayments.length, 0);
+    assert.equal(C.sanitize({ ...s, entries: [{ ...base, amount }] }).entries.length, 0);
+  }
+  const clean = C.sanitize({ ...s, entries: [{ ...base, repayments: [
+    { id: 'bad1', date: '2026-10-02', amount: true },
+    { id: 'bad2', date: '2026-10-02', amount: [20] },
+    { id: 'good', date: '2026-10-02', amount: '25.5' }
+  ] }] });
+  assert.equal(C.paid(clean.entries[0]), 25.5);
+  assert.equal(C.makeEntry({ ...base, amount: '12.5' }).amount, 12.5);
+});
