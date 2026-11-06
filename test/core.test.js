@@ -72,7 +72,7 @@ test('ICS has open dated entries only, escapes text, folds', () => {
 });
 test('sanitize rejects junk and orphan entries; merge unions by id', () => {
   assert.equal(C.sanitize(null), null); assert.equal(C.sanitize({ people: 1 }), null);
-  const { s, p } = mk(); const e = C.makeEntry({ title: 'A', personId: p.id }); s.entries.push(e);
+  const { s, p } = mk(); const e = C.makeEntry({ title: 'A', personId: p.id, date: '2026-10-01' }); s.entries.push(e);
   const evil = JSON.parse(JSON.stringify(s)); evil.entries.push({ id: 'z', title: 'orphan', personId: 'nope' }, { id: e.id, title: 'dup', personId: p.id }, null); evil.settings = { lang: 'xx', days: 9999, tone: '<b>' };
   const clean = C.sanitize(evil); assert.equal(clean.entries.length, 1); assert.equal(clean.settings.lang, ''); assert.equal(clean.settings.days, 365); assert.equal(clean.settings.tone, 'gentle');
   const imp = JSON.parse(JSON.stringify(s)); imp.entries[0].returnedAt = '2026-10-03'; imp.entries.push(Object.assign(C.makeEntry({ title: 'B', personId: p.id }), { id: 'b1' }));

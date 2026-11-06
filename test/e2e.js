@@ -43,30 +43,30 @@ const plus = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return y
   await pg.fill('#f-person', 'Z'); await pg.fill('#f-date', '2026-10-10'); await pg.fill('#f-due', '2026-10-01'); await pg.click('#f-save'); assert.ok((await pg.locator('#f-err').textContent()).includes('before')); await escForm();
   // add item with XSS attempt, overdue
   await add({ title: 'Drill <img src=x onerror=alert(1)>', person: 'Mina <b>K</b>', date: plus(-20), due: plus(-5), note: 'blue case' });
-  await pg.waitForSelector('.card'); assert.equal(await pg.locator('.card img, .card b').count(), 0, 'no HTML injection'); assert.ok((await pg.locator('.chip.overdue').textContent()).includes('5 days late'));
+  await pg.waitForSelector('.card'); assert.equal(await pg.locator('.card img, .card b').count(), 0, 'no HTML injection'); assert.ok((await pg.locator('.card .chip.overdue').first().textContent()).includes('5 days late'));
   assert.ok((await pg.locator('.banner.bad').textContent()).includes('Needs attention: 1'));
   // a second person: loan check warns
   await pg.click('#fab'); await pg.fill('#f-person', 'Mina <b>K</b>'); assert.ok((await pg.locator('#f-hint').textContent()).includes('overdue')); await escForm();
   // nudge: firm tone is offered when late
   await pg.click('.card .actions button >> nth=1'); await pg.waitForSelector('#n-text'); const gentle = await pg.inputValue('#n-text'); assert.ok(gentle.includes('Mina <b>K</b>') && gentle.includes('Drill'));
   await pg.check('input[name=tone][value=final]', { force: true }); assert.ok((await pg.inputValue('#n-text')).includes('last reminder')); await pg.click('#n-copy');
-  assert.ok((await pg.evaluate(() => navigator.clipboard.readText())).includes('last reminder')); assert.ok(await pg.locator('#toast').isVisible(), 'copy confirmation is visible above the dialog'); assert.equal(await pg.evaluate(() => document.getElementById('toast').matches(':popover-open')), true, 'toast sits in the top layer'); await pg.screenshot({ path: out + '/nudge.png' }); await pg.keyboard.press('Escape');
+  assert.ok((await pg.evaluate(() => navigator.clipboard.readText())).includes('last reminder')); await pg.waitForSelector('#toast.on'); assert.ok(await pg.locator('#toast').isVisible(), 'copy confirmation is visible above the dialog'); assert.equal(await pg.evaluate(() => document.getElementById('toast').matches(':popover-open')), true, 'toast sits in the top layer'); await pg.screenshot({ path: out + '/nudge.png' }); await pg.keyboard.press('Escape');
   // money lent, partial repayment, completion with undo
   await add({ kind: 'money', title: 'Dinner', person: 'Joon', amount: 100, due: plus(10) });
-  await pg.waitForSelector('.card >> nth=1'); await pg.click('.card:has-text("Joon") .pri'); await pg.waitForSelector('#rp-amt'); await pg.fill('#rp-amt', '40'); await pg.click('dialog button[type=submit]');
-  await pg.waitForFunction(() => document.body.textContent.includes('$40.00 of $100.00 repaid')); assert.ok((await pg.locator('.card:has-text("Joon")').textContent()).includes('$40.00 of $100.00 repaid'));
-  await pg.click('.card:has-text("Joon") .pri'); await pg.fill('#rp-amt', '999'); await pg.click('dialog button[type=submit]'); await pg.waitForFunction(() => !document.body.textContent.includes('Joon') || ![...document.querySelectorAll('.card')].some(c => c.textContent.includes('Joon')));
-  assert.equal(await pg.locator('.card:has-text("Joon")').count(), 0, 'finished entry leaves the open list'); await pg.click('#toast button'); await pg.waitForSelector('.card:has-text("Joon")');
+  await pg.waitForSelector('.card >> nth=1'); await pg.click('.card[data-status]:has-text("Joon") .pri'); await pg.waitForSelector('#rp-amt'); await pg.fill('#rp-amt', '40'); await pg.click('dialog button[type=submit]');
+  await pg.waitForFunction(() => document.body.textContent.includes('$40.00 of $100.00 repaid')); assert.ok((await pg.locator('.card[data-status]:has-text("Joon")').textContent()).includes('$40.00 of $100.00 repaid'));
+  await pg.click('.card[data-status]:has-text("Joon") .pri'); await pg.fill('#rp-amt', '999'); await pg.click('dialog button[type=submit]'); await pg.waitForFunction(() => !document.body.textContent.includes('Joon') || ![...document.querySelectorAll('.card[data-status]')].some(c => c.textContent.includes('Joon')));
+  assert.equal(await pg.locator('.card[data-status]:has-text("Joon")').count(), 0, 'finished entry leaves the open list'); await pg.click('#toast button'); await pg.waitForSelector('.card[data-status]:has-text("Joon")');
   // returned item (undo path tested above); mark Drill returned
-  await pg.click('.card:has-text("Drill") .pri'); assert.equal(await pg.locator('.card:has-text("Drill")').count(), 0); await pg.click('button.link'); assert.equal(await pg.locator('.card.closed').count(), 1);
+  await pg.click('.card[data-status]:has-text("Drill") .pri'); assert.equal(await pg.locator('.card[data-status]:has-text("Drill")').count(), 0); await pg.click('button.link'); assert.equal(await pg.locator('.card.closed').count(), 1);
   // persistence
   await pg.reload(); await pg.waitForSelector('.card'); assert.equal(await pg.evaluate(() => window.__ln.state.entries.length), 2);
   // borrowed tab + extend
   await pg.click('[data-tab=in]'); await pg.waitForSelector('.empty'); await add({ dir: 'in', title: 'Camping tent', person: 'Dad', due: plus(2) }); await pg.waitForSelector('.chip.soon');
-  await pg.click('.card:has-text("tent") .actions button >> nth=1'); await pg.waitForSelector('#ask-in'); await pg.fill('#ask-in', plus(20)); await pg.click('dialog button[type=submit]'); await pg.waitForSelector('.chip:not(.soon)');
+  await pg.click('.card[data-status]:has-text("tent") .actions button >> nth=1'); await pg.waitForSelector('#ask-in'); await pg.fill('#ask-in', plus(20)); await pg.click('dialog button[type=submit]'); await pg.waitForSelector('.chip:not(.soon)');
   // detail dialog + edit
-  await pg.click('.card:has-text("tent") .head'); await pg.waitForSelector('.tl'); assert.ok((await pg.locator('.tl').textContent()).includes('Extended')); await pg.screenshot({ path: out + '/detail.png' });
-  await pg.click('dialog button:has-text("Edit")'); await pg.fill('#f-title', 'Big tent'); await pg.click('#f-save'); await pg.waitForSelector('.card:has-text("Big tent")');
+  await pg.click('.card[data-status]:has-text("tent") .head'); await pg.waitForSelector('.tl'); assert.ok((await pg.locator('.tl').textContent()).includes('Extended')); await pg.screenshot({ path: out + '/detail.png' });
+  await pg.click('dialog button:has-text("Edit")'); await pg.fill('#f-title', 'Big tent'); await pg.click('#f-save'); await pg.waitForSelector('.card[data-status]:has-text("Big tent")');
   // people + insights
   await pg.click('[data-tab=people]'); await pg.waitForSelector('[data-person]'); assert.equal(await pg.locator('[data-person]').count(), 3); await pg.screenshot({ path: out + '/people.png' });
   await pg.click('[data-person] >> nth=0'); await pg.waitForSelector('#p-note'); await pg.fill('#p-note', 'neighbour'); await pg.click('dialog .pri'); await pg.waitForTimeout(100);
@@ -96,17 +96,17 @@ const plus = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return y
   // two tabs stay in sync instead of overwriting each other
   const ctx2 = await b.newContext({ viewport: { width: 390, height: 844 } }), t1 = await ctx2.newPage(), t2 = await ctx2.newPage();
   await t1.goto(base + '/app/'); await t2.goto(base + '/app/');
-  for (const [pg2, nm] of [[t1, 'One'], [t2, 'Two']]) { await pg2.click('.empty button, #fab'); await pg2.fill('#f-title', nm); await pg2.fill('#f-person', 'P' + nm); await pg2.click('#f-save'); await pg2.waitForSelector('.card:has-text("' + nm + '")'); await pg2.waitForTimeout(150); }
+  for (const [pg2, nm] of [[t1, 'One'], [t2, 'Two']]) { await pg2.click('.empty button, #fab'); await pg2.fill('#f-title', nm); await pg2.fill('#f-person', 'P' + nm); await pg2.click('#f-save'); await pg2.waitForSelector('.card[data-status]:has-text("' + nm + '")'); await pg2.waitForTimeout(150); }
   await t1.waitForFunction(() => window.__ln.state.entries.length === 2); assert.equal(await t2.evaluate(() => window.__ln.state.entries.length), 2);
   // concurrent edit: the stale tab refuses to overwrite and says so
-  await t1.click('.card:has-text("One") .head'); await t1.click('dialog button:has-text("Edit")'); await t1.waitForSelector('#f-title');
-  await t2.click('#fab'); await t2.fill('#f-title', 'Three'); await t2.fill('#f-person', 'PThree'); await t2.click('#f-save'); await t2.waitForSelector('.card:has-text("Three")'); await t2.waitForTimeout(200);
+  await t1.click('.card[data-status]:has-text("One") .head'); await t1.click('dialog button:has-text("Edit")'); await t1.waitForSelector('#f-title');
+  await t2.click('#fab'); await t2.fill('#f-title', 'Three'); await t2.fill('#f-person', 'PThree'); await t2.click('#f-save'); await t2.waitForSelector('.card[data-status]:has-text("Three")'); await t2.waitForTimeout(200);
   await t1.fill('#f-title', 'One edited'); await t1.click('#f-save'); await t1.waitForFunction(() => { const d = document.querySelector('dialog[open]'); return !!d && d.textContent.includes('Another tab'); }); assert.equal(await t1.inputValue('#f-title'), 'One edited', 'the form keeps what was typed'); assert.equal(await t1.evaluate(() => window.__ln.state.entries.length), 3);
   await t1.click('#f-save'); await t1.waitForSelector('dialog', { state: 'detached' }); assert.equal(await t1.evaluate(() => window.__ln.state.entries.find(x => x.title === 'One edited') ? 1 : 0), 1);
   // cross-tab undo is refused instead of wiping the other tab's write
   await t1.keyboard.press('Escape'); await t1.waitForTimeout(100); if (await t1.locator('#confirm-ok').count()) await t1.click('#confirm-ok'); await t1.waitForSelector('dialog', { state: 'detached' });
   await t1.reload(); await t1.waitForSelector('.card'); await t1.click('.card >> nth=0 >> .pri'); await t1.waitForSelector('#toast.on button');
-  await t2.reload(); await t2.click('#fab'); await t2.fill('#f-title', 'Four'); await t2.fill('#f-person', 'PFour'); await t2.click('#f-save'); await t2.waitForSelector('.card:has-text("Four")'); await t1.waitForFunction(() => window.__ln.state.entries.length === 4);
+  await t2.reload(); await t2.click('#fab'); await t2.fill('#f-title', 'Four'); await t2.fill('#f-person', 'PFour'); await t2.click('#f-save'); await t2.waitForSelector('.card[data-status]:has-text("Four")'); await t1.waitForFunction(() => window.__ln.state.entries.length === 4);
   await t1.evaluate(() => document.querySelector('#toast button') && document.querySelector('#toast button').click());
   assert.ok(await t1.locator('#toast').isVisible(), 'conflict toast is visible'); assert.ok((await t1.locator('#toast').textContent()).includes('Another tab'));
   assert.equal(await t2.evaluate(() => window.__ln.state.entries.length), 4); assert.equal(await t1.evaluate(() => window.__ln.state.entries.length), 4);
@@ -130,15 +130,15 @@ const plus = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return y
   // item kind hides the money fields; a person's note survives an unrelated edit and people are pruned only when unlinked
   const nn = await (await b.newContext({ viewport: { width: 390, height: 844 } })).newPage(); await nn.goto(base + '/app/'); await nn.waitForSelector('.empty'); await nn.click('.empty button');
   await nn.check('input[name=kind][value=item]', { force: true }); assert.equal(await nn.locator('#f-amount').isVisible(), false); await nn.check('input[name=kind][value=money]', { force: true }); assert.equal(await nn.locator('#f-amount').isVisible(), true);
-  await nn.check('input[name=kind][value=item]', { force: true }); await nn.fill('#f-title', 'Drill'); await nn.fill('#f-person', 'Ann'); await nn.click('#f-save'); await nn.waitForSelector('.card:has-text("Drill")');
+  await nn.check('input[name=kind][value=item]', { force: true }); await nn.fill('#f-title', 'Drill'); await nn.fill('#f-person', 'Ann'); await nn.click('#f-save'); await nn.waitForSelector('.card[data-status]:has-text("Drill")');
   await nn.evaluate(() => { const s = window.__ln.state; s.people.find(p => p.name === 'Ann').note = 'call first'; localStorage.setItem('lendnest.v1', JSON.stringify(s)); }); await nn.reload(); await nn.waitForSelector('.card');
-  await nn.click('#fab'); await nn.fill('#f-title', 'Tent'); await nn.fill('#f-person', 'Bo'); await nn.click('#f-save'); await nn.waitForSelector('.card:has-text("Tent")');
-  await nn.click('.card:has-text("Drill") .head'); await nn.click('dialog button:has-text("Delete")'); await nn.click('#confirm-ok'); await nn.waitForFunction(() => !document.body.textContent.includes('Drill'));
-  await nn.click('.card:has-text("Tent") .head'); await nn.click('dialog button:has-text("Edit")'); await nn.fill('#f-title', 'Tent 2'); await nn.click('#f-save'); await nn.waitForSelector('.card:has-text("Tent 2")');
+  await nn.click('#fab'); await nn.fill('#f-title', 'Tent'); await nn.fill('#f-person', 'Bo'); await nn.click('#f-save'); await nn.waitForSelector('.card[data-status]:has-text("Tent")');
+  await nn.click('.card[data-status]:has-text("Drill") .head'); await nn.click('dialog button:has-text("Delete")'); await nn.click('#confirm-ok'); await nn.waitForFunction(() => !document.body.textContent.includes('Drill'));
+  await nn.click('.card[data-status]:has-text("Tent") .head'); await nn.click('dialog button:has-text("Edit")'); await nn.fill('#f-title', 'Tent 2'); await nn.click('#f-save'); await nn.waitForSelector('.card[data-status]:has-text("Tent 2")');
   assert.equal(await nn.evaluate(() => window.__ln.state.people.some(p => p.name === 'Ann' && p.note === 'call first')), true, 'note survives');
   // installments, statement, handover card, upcoming list
   const ft = await (await b.newContext({ viewport: { width: 390, height: 844 }, acceptDownloads: true, permissions: ['clipboard-read', 'clipboard-write'] })).newPage(); await ft.goto(base + '/app/'); await ft.waitForSelector('.empty'); await ft.click('.empty button');
-  await ft.check('input[name=kind][value=money]', { force: true }); await ft.fill('#f-title', 'Laptop'); await ft.fill('#f-person', 'Kim'); await ft.fill('#f-amount', '300'); await ft.selectOption('#f-plan', '3'); await ft.click('#f-save'); await ft.waitForSelector('.card:has-text("Installment 1 of 3")');
+  await ft.check('input[name=kind][value=money]', { force: true }); await ft.fill('#f-title', 'Laptop'); await ft.fill('#f-person', 'Kim'); await ft.fill('#f-amount', '300'); await ft.selectOption('#f-plan', '3'); await ft.click('#f-save'); await ft.waitForSelector('.card[data-status]:has-text("Installment 1 of 3")');
   await ft.click('.card .head'); await ft.waitForSelector('#d-card'); const [cd] = await Promise.all([ft.waitForEvent('download'), ft.click('#d-card')]); assert.equal(cd.suggestedFilename(), 'lendnest-note.png'); assert.ok(fs.statSync(await cd.path()).size > 2000); await ft.keyboard.press('Escape');
   await ft.click('[data-tab=people]'); await ft.click('[data-person]'); await ft.click('#p-stmt'); assert.ok((await ft.evaluate(() => navigator.clipboard.readText())).includes('Laptop')); await ft.keyboard.press('Escape');
   await ft.click('[data-tab=ins]'); await ft.waitForSelector('h2.sec'); assert.ok((await ft.locator('main').textContent()).includes('Coming up'));
@@ -149,11 +149,11 @@ const plus = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return y
   await fc.goto(base + '/app/'); await fc.waitForSelector('.empty'); await fc.click('.empty button');
   await fc.fill('#f-title', 'Hammer'); await fc.fill('#f-person', 'Ari'); await fc.fill('#f-tags', 'tools, garden'); await fc.click('#f-save');
   await fc.click('#fab'); await fc.check('input[name=kind][value=money]', { force: true }); await fc.fill('#f-title', 'Loan'); await fc.fill('#f-person', 'Ari'); await fc.fill('#f-amount', '50'); await fc.fill('#f-date', plus(-10)); await fc.fill('#f-tags', 'cash'); await fc.click('#f-save');
-  await fc.waitForSelector('.card:has-text("Loan")');
+  await fc.waitForSelector('.card[data-status]:has-text("Loan")');
   await fc.click('[data-tab=people]'); await fc.click('[data-tab=out]');
-  await fc.click('.tags button:has-text("#tools"), [role=group] button:has-text("#tools")'); await fc.waitForSelector('.card:has-text("Hammer")'); assert.equal(await fc.locator('.card:has-text("Loan")').count(), 0, 'tag filter hides other entries');
+  await fc.click('.tags button:has-text("#tools"), [role=group] button:has-text("#tools")'); await fc.waitForSelector('.card[data-status]:has-text("Hammer")'); assert.equal(await fc.locator('.card[data-status]:has-text("Loan")').count(), 0, 'tag filter hides other entries');
   await fc.click('[role=group] button:has-text("All")');
-  await fc.click('.card:has-text("Loan") .head'); await fc.click('dialog button:has-text("Record repayment")'); await fc.waitForSelector('#rp-amt');
+  await fc.click('.card[data-status]:has-text("Loan") .head'); await fc.click('dialog button:has-text("Record repayment")'); await fc.waitForSelector('#rp-amt');
   await fc.fill('#rp-amt', '10'); await fc.fill('#rp-date', plus(-30)); await fc.evaluate(() => { document.getElementById('rp-date').removeAttribute('min'); }); await fc.click('dialog button[type=submit]');
   await fc.waitForFunction(() => document.getElementById('rp-err') && document.getElementById('rp-err').textContent.length > 0);
   assert.ok(await fc.locator('#rp-amt').count() === 1, 'dialog stays open when the date is out of range');

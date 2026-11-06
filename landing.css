@@ -36,3 +36,6 @@ article h3{font-size:17px;margin:12px 0 6px}article p{margin:0;color:var(--mute)
 .foot{padding-top:20px;padding-bottom:32px;color:var(--mute);font-size:14px}.foot a{color:var(--mute)}
 @media (max-width:760px){.two-col{grid-template-columns:1fr}.phone{transform:none}.hero{padding-top:28px}}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+/* Allow translated controls and wider system fonts to wrap on small screens. */
+.bar{flex-wrap:wrap;gap:10px}.right{flex-wrap:wrap;max-width:100%}
