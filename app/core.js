@@ -11,6 +11,7 @@
   function addDays(s, n) { var d = parse(s); d.setDate(d.getDate() + n); return ymd(d); }
   function diffDays(a, b) { return Math.round((parse(a) - parse(b)) / DAY); } /* a - b */
   function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+  function numberValue(v) { return (typeof v === 'number' || (typeof v === 'string' && v.trim())) ? Number(v) : NaN; }
   function round2(x) { return Math.round(x * 100 + (x >= 0 ? 1e-9 : -1e-9)) / 100; }
   function str(v, max) { return typeof v === 'string' ? Array.from(v.trim().replace(/[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/g, '\ufffd')).slice(0, max || MAX.text).join('') : ''; }
 
@@ -47,7 +48,7 @@
   }
   function repay(e, amount, date) {
     if (e.kind !== 'money' || isClosed(e)) return false;
-    var a = round2(Number(amount)); if (!(a > 0) || !isFinite(a) || !isDate(date)) return false;
+    var a = round2(numberValue(amount)); if (!(a > 0) || !isFinite(a) || !isDate(date)) return false;
     a = Math.min(a, remaining(e));
     e.repayments.push({ id: uid(), date: date, amount: a });
     if (remaining(e) === 0) { e.returnedAt = date; e.reopened = false; }
@@ -125,14 +126,14 @@
   function makeEntry(o) {
     var kind = o.kind === 'money' ? 'money' : 'item';
     var e = { id: o.id || uid(), dir: o.dir === 'in' ? 'in' : 'out', kind: kind, title: str(o.title), personId: o.personId || '',
-      amount: kind === 'money' ? (round2(Number(o.amount)) > 0 && Number(o.amount) <= MAX_AMOUNT ? round2(Number(o.amount)) : 0) : 0, currency: str(o.currency, 8).toUpperCase() || 'USD',
+      amount: kind === 'money' ? (round2(numberValue(o.amount)) > 0 && numberValue(o.amount) <= MAX_AMOUNT ? round2(numberValue(o.amount)) : 0) : 0, currency: str(o.currency, 8).toUpperCase() || 'USD',
       date: isDate(o.date) ? o.date : today(), due: isDate(o.due) ? o.due : '', repayments: [], returnedAt: null, writtenOff: false, extended: [], gone: [], reopened: false, plan: (kind === 'money' && o.plan && Number.isInteger(o.plan.n) && o.plan.n >= 2 && o.plan.n <= 60) ? { n: o.plan.n, every: 30 } : null,
       note: str(o.note, MAX.note), photo: typeof o.photo === 'string' && /^data:image\/(jpeg|png|webp);base64,/.test(o.photo) && o.photo.length <= MAX_PHOTO ? o.photo : '', created: Number.isFinite(o.created) ? o.created : Date.now(), tags: parseTags(o.tags), nudges: [], remindOn: isDate(o.remindOn) ? o.remindOn : '', returnNote: str(o.returnNote, MAX.note) };
     return e;
   }
   function validEntry(o) {
     if (!o.title) return 'title'; if (!o.personId) return 'person';
-    if (o.kind === 'money' && !(round2(Number(o.amount)) > 0 && Number(o.amount) <= MAX_AMOUNT)) return 'amount';
+    if (o.kind === 'money' && !(round2(numberValue(o.amount)) > 0 && numberValue(o.amount) <= MAX_AMOUNT)) return 'amount';
     if (o.due && isDate(o.date) && o.due < o.date) return 'due';
     return '';
   }
@@ -339,7 +340,7 @@
     obj.entries.slice(0, MAX.entries).forEach(function (o) {
       if (!o || typeof o.id !== 'string' || !o.id || seen[o.id] || !pmap[o.personId] || !str(o.title)) return; seen[o.id] = 1;
       var e = makeEntry(o); e.personId = pmap[o.personId]; e.id = ID_RE.test(o.id) ? o.id : uid();
-      e.repayments = (Array.isArray(o.repayments) ? o.repayments : []).filter(function (r) { return r && isDate(r.date) && Number(r.amount) > 0 && Number(r.amount) <= MAX_AMOUNT; }).map(function (r) { var x = { id: ID_RE.test(r.id) ? r.id : uid(), date: r.date, amount: round2(Number(r.amount)) }; if (r.auto) x.auto = true; return x; });
+      e.repayments = (Array.isArray(o.repayments) ? o.repayments : []).filter(function (r) { return r && isDate(r.date) && numberValue(r.amount) > 0 && numberValue(r.amount) <= MAX_AMOUNT; }).map(function (r) { var x = { id: ID_RE.test(r.id) ? r.id : uid(), date: r.date, amount: round2(numberValue(r.amount)) }; if (r.auto) x.auto = true; return x; });
       if (e.kind === 'money') { var sum = 0; e.repayments = e.repayments.map(function (r) { var a = Math.min(r.amount, round2(e.amount - sum)); sum = round2(sum + a); return a > 0 ? Object.assign(r, { amount: a }) : null; }).filter(Boolean); }
       e.returnedAt = isDate(o.returnedAt) ? (o.returnedAt < e.date ? e.date : o.returnedAt) : null; /* a return before the lend date is moved up to it */ e.writtenOff = !!o.writtenOff; if (!e.returnedAt) e.returnNote = '';
       e.extended = (Array.isArray(o.extended) ? o.extended : []).filter(function (x) { return x && isDate(x.date) && isDate(x.due); }).map(function (x) { return { date: x.date, due: x.due }; });
