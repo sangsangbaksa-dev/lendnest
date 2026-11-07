@@ -304,3 +304,8 @@ h2 { font-family: var(--display); font-size: 19px; font-weight: 700; }
 .foot-desc, .foot-disc, .foot-copy { margin: 0; }
 @media (max-width: 420px) { .hero { padding-top: 32px; } .bar-cta { padding: 0 14px; font-size: 14px; } }
 @media (prefers-reduced-motion: reduce) { .bar-cta { transition: none; } .bar-cta:active { transform: none; } }
+
+/* Weekly hours left to the threshold, shown under the worked hours. */
+.room { display: block; margin-top: 2px; color: var(--muted, #5b6470); font-size: 12px; line-height: 1.4; }
+/* Warning markers are drawn, not text glyphs. */
+.warnings li::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: currentColor; margin-right: 8px; vertical-align: middle; }

@@ -148,6 +148,26 @@ export function weeklyReport(shifts, employees) {
     .sort((a, b) => (a.weekStart === b.weekStart ? a.name.localeCompare(b.name, 'ko') : a.weekStart < b.weekStart ? -1 : 1));
 }
 
+// 한 주의 남은 시간: 주휴수당 기준(15시간)까지, 연장근로 가산 기준(40시간)까지 남은 시간입니다. 이미 넘었으면 0입니다.
+// 주휴 기준을 넘은 뒤에는 toHoliday가 0이고, 40시간 이상이면 toOvertime이 0입니다. 소수 한 자리로 반올림합니다.
+export function weekHeadroom(week) {
+  const h = Number(week?.hours);
+  const hours = Number.isFinite(h) && h > 0 ? h : 0;
+  const r1 = (x) => Math.round(x * 10) / 10;
+  return {
+    toHoliday: hours >= WEEKLY_HOLIDAY_MIN_HOURS ? 0 : r1(WEEKLY_HOLIDAY_MIN_HOURS - hours),
+    toOvertime: hours >= WEEKLY_STANDARD_HOURS ? 0 : r1(WEEKLY_STANDARD_HOURS - hours),
+  };
+}
+
+// 실질 시급: 월 지급 합계를 근무시간으로 나눈 값입니다. 기본급, 연장 가산, 주휴수당이 모두 들어갑니다. 근무시간이 없으면 0입니다.
+export function effectiveHourly(monthRow) {
+  const hours = Number(monthRow?.hours);
+  const total = Number(monthRow?.total);
+  if (!Number.isFinite(hours) || hours <= 0 || !Number.isFinite(total) || total < 0) return 0;
+  return Math.round(total / hours);
+}
+
 // 주 단위 결과를 "주 시작일이 속한 달" 기준으로 직원별 월 합계로 묶습니다.
 export function monthlyReport(weeks) {
   const map = new Map();

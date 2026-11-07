@@ -8,6 +8,10 @@ import {
   cleanText,
   monthlyReport,
   monthlyToCSV,
+  effectiveHourly,
+  weekHeadroom,
+  WEEKLY_HOLIDAY_MIN_HOURS,
+  WEEKLY_STANDARD_HOURS,
   parseWon,
   sanitizeEmployee,
   sanitizeShift,
@@ -124,6 +128,7 @@ function renderCards(monthly) {
   $('#c-ot').textContent = won(sum('overtimePay'));
   $('#c-holiday').textContent = won(sum('holidayPay'));
   $('#c-total').textContent = won(sum('total'));
+  $('#c-eff').textContent = won(effectiveHourly({ hours: sum('hours'), total: sum('total') }));
 }
 
 function renderWarnings(weeks) {
@@ -133,12 +138,26 @@ function renderWarnings(weeks) {
     ...items.map((w) => {
       const li = document.createElement('li');
       li.className = w.level;
-      li.textContent = `${w.level === 'error' ? '⚠ ' : 'ℹ '}${w.text}`;
+      li.textContent = w.text;
       return li;
     }),
   );
   $('#warn-empty').hidden = items.length > 0;
   $('#warn-panel').hidden = !state.employees.length && !items.length;
+}
+
+// Worked hours plus how many hours are left to the holiday pay (under 15 h) or overtime (under 40 h) threshold.
+function worked(w) {
+  const cell = td(hrs(w.minutes), 'num');
+  const room = weekHeadroom(w);
+  const note = w.hours < WEEKLY_HOLIDAY_MIN_HOURS ? `주휴 기준까지 ${room.toHoliday}시간` : w.hours < WEEKLY_STANDARD_HOURS ? `연장 기준까지 ${room.toOvertime}시간` : '';
+  if (note) {
+    const small = document.createElement('small');
+    small.className = 'room';
+    small.textContent = note;
+    cell.append(small);
+  }
+  return cell;
 }
 
 function renderWeeks(weeks) {
@@ -149,7 +168,7 @@ function renderWeeks(weeks) {
     tr.append(
       td(w.weekStart),
       td(w.name),
-      td(hrs(w.minutes), 'num'),
+      worked(w),
       td(w.overtimeHours > 0 ? hrs(w.overtimeHours * 60) : '-', 'num'),
       td(w.holidayHours > 0 ? `${Math.round(w.holidayHours * 10) / 10}시간` : '-', 'num'),
       td(won(w.basePay + w.overtimePay + w.holidayPay), 'num'),

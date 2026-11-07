@@ -303,3 +303,23 @@ test('parseAnalysisResponse uses only text blocks and ignores thinking blocks', 
   assert.equal(parseAnalysisResponse({ content: [] }), null);
   assert.equal(parseAnalysisResponse(null), null);
 });
+
+test('weekHeadroom: hours left to the holiday pay and overtime thresholds', async () => {
+  const { weekHeadroom } = await import('../logic.js');
+  assert.deepEqual(weekHeadroom({ hours: 10 }), { toHoliday: 5, toOvertime: 30 });
+  assert.deepEqual(weekHeadroom({ hours: 15 }), { toHoliday: 0, toOvertime: 25 });
+  assert.deepEqual(weekHeadroom({ hours: 40 }), { toHoliday: 0, toOvertime: 0 });
+  assert.deepEqual(weekHeadroom({ hours: 42.5 }), { toHoliday: 0, toOvertime: 0 });
+  assert.deepEqual(weekHeadroom({ hours: 12.25 }), { toHoliday: 2.8, toOvertime: 27.8 });
+  assert.deepEqual(weekHeadroom({ hours: NaN }), { toHoliday: 15, toOvertime: 40 });
+  assert.deepEqual(weekHeadroom(undefined), { toHoliday: 15, toOvertime: 40 });
+});
+
+test('effectiveHourly: total pay divided by hours, zero when no hours or bad input', async () => {
+  const { effectiveHourly } = await import('../logic.js');
+  assert.equal(effectiveHourly({ hours: 20, total: 220000 }), 11000);
+  assert.equal(effectiveHourly({ hours: 0, total: 0 }), 0);
+  assert.equal(effectiveHourly({ hours: 10, total: -5 }), 0);
+  assert.equal(effectiveHourly({ hours: NaN, total: 100 }), 0);
+  assert.equal(effectiveHourly(null), 0);
+});
